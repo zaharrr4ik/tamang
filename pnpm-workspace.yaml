@@ -1,0 +1,15 @@
+packages:
+  - '.'
+
+# pnpm 11 по умолчанию блокирует build-скрипты зависимостей (supply-chain security).
+# Vite требует esbuild — явно разрешаем его install-скрипт.
+# (файл создан `pnpm approve-builds`; ключ 11-й ветки — allowBuilds)
+allowBuilds:
+  esbuild: true
+
+# Плоское дерево node_modules: предсказуемое разрешение ESM-модулей (Vite использует
+# динамические import('esbuild'/'rollup')), не зависящее от junction/symlink-раскладки ОС.
+nodeLinker: hoisted
+
+# Не запускать неявный install перед `pnpm run` — команды из README выполняются явно.
+verifyDepsBeforeRun: false

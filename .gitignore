@@ -1,0 +1,20 @@
+# Зависимости
+node_modules/
+.pnpm-store/
+
+# Сборка
+dist/
+dist-ssr/
+
+# Логи и локальные файлы
+*.log
+*.local
+.env
+.env.*
+
+# ОС и редакторы
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
