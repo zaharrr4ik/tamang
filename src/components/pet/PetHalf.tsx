@@ -1,41 +1,53 @@
 import { getPetLevel } from '@/data/petConfig';
 import { usePetStore } from '@/store';
-import { PetOutfitSlot } from './PetOutfitSlot';
 import { PetStage } from './PetStage';
-import { PetStats } from './PetStats';
 
 /**
- * Верхняя половина главного экрана.
+ * Верхняя половина главного экрана — «тамагочи-экран» с LCD-рамкой.
  * Живёт вне динамической зоны: при смене вкладок не размонтируется,
- * поэтому питомец и его статы сохраняют состояние.
+ * поэтому питомец и его состояние сохраняются.
+ *
+ * Контракт со сценой: .pixel-screen — это позиционированный контейнер
+ * фиксированной (flex-1) высоты без внутренних отступов. PetStage заполняет
+ * его целиком через absolute inset-0 (пол при этом рисуется внутри PetStage
+ * и совпадает с нижней кромкой экрана). Обёртка absolute inset-0 гарантирует
+ * сцене полноразмерный positioned-родитель.
  */
 export function PetHalf() {
-  const name = usePetStore((state) => state.name);
   const totalXp = usePetStore((state) => state.totalXp);
   const level = getPetLevel(totalXp);
 
   return (
     <section
       aria-label="Питомец"
-      className="relative flex h-[48%] min-h-[232px] shrink-0 flex-col overflow-hidden px-4 pb-3 pt-[calc(var(--app-safe-top)+0.75rem)]"
+      className="relative flex h-[50%] min-h-[240px] shrink-0 flex-col px-3 pb-2 pt-[calc(var(--app-safe-top)+0.75rem)]"
     >
-      <header className="flex items-center justify-between gap-2">
-        <div className="min-w-0">
-          <h2 className="truncate text-lg font-bold leading-tight text-app-text">{name}</h2>
-          <p className="text-[11px] text-app-hint">Твой питомец-полиглот</p>
+      <div className="pixel-screen relative min-h-0 flex-1 overflow-hidden rounded-none">
+        {/* Сцена: PetStage сам рисует пол и лягушку и заполняет этот контейнер. */}
+        <div className="absolute inset-0">
+          <PetStage />
         </div>
-        <span className="shrink-0 rounded-full border border-app-border bg-app-card px-3 py-1 text-[11px] font-semibold text-app-accent shadow-app">
-          ⭐ Ур. {level} · {totalXp} XP
-        </span>
-      </header>
 
-      {/* Сцена питомца: сам питомец, слой надетых предметов и задел под анимации. */}
-      <div className="relative flex min-h-0 flex-1 items-center justify-center">
-        <PetStage />
-        <PetOutfitSlot />
+        {/* Слой эмодзи-нарядов (PetOutfitSlot) временно скрыт: старые
+            смайлики-заглушки убраны, пока питомец — пиксельный спрайт.
+            Вернём после того, как появятся пиксельные наряды. */}
+
+        {/* Сканлайны LCD поверх сцены: только вид, тапы не перехватывают. */}
+        <div
+          aria-hidden="true"
+          className="lcd-scanlines pointer-events-none absolute inset-0 z-10"
+        />
+
+        {/* Компактный HUD уровня в левом верхнем углу экрана, без эмодзи. */}
+        <div className="absolute left-2 top-2 z-20 flex items-center gap-1.5">
+          <span className="pixel-chip bg-app-card px-1.5 py-1 font-display text-[8px] leading-none text-app-text">
+            УР.{level}
+          </span>
+          <span className="pixel-chip bg-app-card px-1.5 py-1 font-display text-[8px] leading-none text-app-hint">
+            {totalXp} XP
+          </span>
+        </div>
       </div>
-
-      <PetStats />
     </section>
   );
 }

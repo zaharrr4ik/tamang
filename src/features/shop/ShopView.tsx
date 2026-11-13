@@ -11,7 +11,7 @@ const CATEGORY_LABELS: Record<ShopItem['category'], string> = {
 };
 
 /**
- * Магазин: сетка мок-товаров.
+ * Магазин: сетка мок-товаров в пиксельных карточках.
  * Предметы, выданные изначально (ownedByDefault), можно надеть или снять —
  * они сразу видны в слое питомца (PetOutfitSlot). Покупки в каркасе не реализованы,
  * поэтому остальные товары показывают цену и неактивную кнопку «Скоро».
@@ -33,10 +33,10 @@ export function ShopView() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <header className="space-y-1">
-        <h2 className="text-lg font-bold text-app-text">Магазин</h2>
-        <p className="text-sm text-app-hint">
+        <h2 className="font-display text-xs leading-relaxed text-app-text">Магазин</h2>
+        <p className="font-app text-[11px] leading-snug text-app-hint">
           Покупки появятся в следующих версиях. Пока доступны предметы, выданные на старте:
           надень их — и они появятся рядом с питомцем.
         </p>
@@ -50,24 +50,26 @@ export function ShopView() {
           return (
             <article
               key={item.id}
-              className="flex flex-col rounded-app border border-app-border bg-app-bg p-3 shadow-app"
+              className="pixel-frame flex flex-col bg-app-card p-2.5"
             >
               <div className="flex items-start justify-between gap-1">
-                <span className="text-3xl" role="img" aria-label={item.title}>
+                <span className="text-3xl leading-none" role="img" aria-label={item.title}>
                   {item.emoji}
                 </span>
                 {isEquipped && (
-                  <span className="shrink-0 rounded-full border border-app-success px-2 py-0.5 text-[10px] font-semibold text-app-success">
+                  <span className="pixel-chip shrink-0 bg-app-accent-soft px-1.5 py-1 font-display text-[7px] leading-none text-app-text">
                     Надето
                   </span>
                 )}
               </div>
 
-              <h3 className="mt-2 text-sm font-bold leading-tight text-app-text">{item.title}</h3>
-              <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-app-hint">
+              <h3 className="mt-2 font-display text-[9px] leading-relaxed text-app-text">
+                {item.title}
+              </h3>
+              <p className="mt-1 line-clamp-2 font-app text-[11px] leading-snug text-app-hint">
                 {item.description}
               </p>
-              <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-app-hint">
+              <p className="mt-1 font-display text-[7px] uppercase leading-relaxed text-app-hint">
                 {CATEGORY_LABELS[item.category]}
               </p>
 
@@ -77,11 +79,13 @@ export function ShopView() {
                 <button
                   type="button"
                   onClick={() => handleToggleEquip(item)}
-                  className={`mt-1 w-full rounded-app-sm px-3 py-2 text-xs font-bold transition-transform active:scale-95 ${
+                  className={[
+                    'pixel-btn-sm flex min-h-[44px] w-full select-none items-center justify-center px-2',
+                    'font-display text-[9px] uppercase leading-none',
                     isEquipped
-                      ? 'border border-app-border bg-app-card text-app-text'
-                      : 'bg-app-accent text-app-accent-contrast'
-                  }`}
+                      ? 'bg-app-card text-app-text'
+                      : 'bg-app-accent text-app-accent-contrast',
+                  ].join(' ')}
                 >
                   {isEquipped ? 'Снять' : 'Надеть'}
                 </button>
@@ -90,7 +94,7 @@ export function ShopView() {
                   type="button"
                   disabled
                   title="Покупки появятся в следующих версиях"
-                  className="mt-1 w-full cursor-not-allowed rounded-app-sm border border-app-border bg-app-card px-3 py-2 text-xs font-semibold text-app-hint opacity-70"
+                  className="pixel-frame-sm flex min-h-[44px] w-full cursor-not-allowed select-none items-center justify-center bg-app-card px-2 font-app text-[10px] font-semibold text-app-hint opacity-70"
                 >
                   {item.price} 🪙 · Скоро
                 </button>

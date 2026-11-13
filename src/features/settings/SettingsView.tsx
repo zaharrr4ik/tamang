@@ -16,7 +16,7 @@ interface ToggleRowProps {
   animated: boolean;
 }
 
-/** Строка-переключатель: одна настройка в виде switch-кнопки. */
+/** Строка-переключатель: одна настройка в виде пиксельного switch. */
 function ToggleRow({ label, hint, emoji, checked, onChange, animated }: ToggleRowProps) {
   return (
     <button
@@ -24,25 +24,35 @@ function ToggleRow({ label, hint, emoji, checked, onChange, animated }: ToggleRo
       role="switch"
       aria-checked={checked}
       onClick={onChange}
-      className="flex w-full items-center gap-3 py-3 text-left"
+      className="flex min-h-[56px] w-full items-center gap-3 py-2.5 text-left"
     >
-      <span aria-hidden="true" className="text-xl">
+      <span
+        aria-hidden="true"
+        className="flex h-8 w-8 shrink-0 items-center justify-center text-xl"
+      >
         {emoji}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold text-app-text">{label}</span>
-        <span className="block text-[11px] leading-snug text-app-hint">{hint}</span>
+        <span className="block font-app text-sm font-bold text-app-text">{label}</span>
+        <span className="mt-0.5 block font-app text-[11px] leading-snug text-app-hint">
+          {hint}
+        </span>
       </span>
+      {/* Пиксельный тумблер: ink-рамка, квадратный бегунок, без сглаживания. */}
       <span
         aria-hidden="true"
-        className={`relative h-6 w-11 shrink-0 rounded-full ${
-          checked ? 'bg-app-accent' : 'bg-app-border'
-        } ${animated ? 'transition-colors duration-200' : ''}`}
+        className={[
+          'relative h-7 w-12 shrink-0 border-2 border-app-ink',
+          checked ? 'bg-app-accent' : 'bg-app-card',
+          animated ? 'transition-colors duration-200' : '',
+        ].join(' ')}
       >
         <span
-          className={`absolute top-0.5 h-5 w-5 rounded-full bg-app-card shadow-app ${
-            checked ? 'translate-x-[22px]' : 'translate-x-0.5'
-          } ${animated ? 'transition-transform duration-200' : ''}`}
+          className={[
+            'absolute left-0.5 top-0.5 h-5 w-5 border-2 border-app-ink bg-app-card',
+            checked ? 'translate-x-[20px]' : 'translate-x-0',
+            animated ? 'transition-transform duration-200' : '',
+          ].join(' ')}
         />
       </span>
     </button>
@@ -127,23 +137,25 @@ export function SettingsView() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <header className="space-y-1">
-        <h2 className="text-lg font-bold text-app-text">Настройки</h2>
-        <p className="text-sm text-app-hint">Настрой приложение под себя.</p>
+        <h2 className="font-display text-xs leading-relaxed text-app-text">Настройки</h2>
+        <p className="font-app text-[11px] leading-snug text-app-hint">
+          Настрой приложение под себя.
+        </p>
       </header>
 
       {notice !== null && (
         <div
           role="status"
-          className="rounded-app-sm border border-app-success bg-app-card px-3 py-2 text-xs font-semibold text-app-success shadow-app"
+          className="pixel-chip bg-app-accent-soft px-3 py-2 font-app text-xs font-semibold text-app-text"
         >
           {notice}
         </div>
       )}
 
-      <section className="rounded-app border border-app-border bg-app-bg p-4 shadow-app">
-        <h3 className="text-[11px] font-bold uppercase tracking-wide text-app-hint">
+      <section className="pixel-frame bg-app-card p-3">
+        <h3 className="font-display text-[9px] uppercase leading-relaxed text-app-hint">
           Ощущения и анимации
         </h3>
         <div className="mt-1 divide-y divide-app-border">
@@ -174,32 +186,32 @@ export function SettingsView() {
         </div>
       </section>
 
-      <section className="rounded-app border border-app-border bg-app-bg p-4 shadow-app">
-        <h3 className="text-[11px] font-bold uppercase tracking-wide text-app-hint">
+      <section className="pixel-frame bg-app-card p-3">
+        <h3 className="font-display text-[9px] uppercase leading-relaxed text-app-hint">
           Сброс данных
         </h3>
-        <p className="mt-1 text-[11px] leading-snug text-app-hint">
+        <p className="mt-1 font-app text-[11px] leading-snug text-app-hint">
           Действия необратимы — прогресс хранится только на этом устройстве.
         </p>
 
         <div className="mt-3 space-y-2">
           {resetTarget === 'pet' ? (
-            <div className="rounded-app-sm border border-app-danger bg-app-card p-3">
-              <p className="text-xs font-semibold text-app-text">
+            <div className="pixel-frame-sm bg-app-card p-2.5">
+              <p className="font-app text-xs font-semibold leading-snug text-app-text">
                 Сбросить питомца? Имя, статы и надетые предметы вернутся к началу.
               </p>
               <div className="mt-2 flex gap-2">
                 <button
                   type="button"
                   onClick={handleCancelReset}
-                  className="flex-1 rounded-app-sm border border-app-border bg-app-bg px-3 py-2 text-xs font-semibold text-app-text"
+                  className="pixel-btn-sm flex min-h-[44px] flex-1 items-center justify-center bg-app-card px-2 font-app text-xs font-semibold text-app-text"
                 >
                   Отмена
                 </button>
                 <button
                   type="button"
                   onClick={handleConfirmReset}
-                  className="flex-1 rounded-app-sm border border-app-danger px-3 py-2 text-xs font-bold text-app-danger"
+                  className="pixel-btn-sm flex min-h-[44px] flex-1 items-center justify-center bg-app-danger px-2 font-app text-xs font-bold text-app-ink"
                 >
                   Да, сбросить
                 </button>
@@ -209,29 +221,29 @@ export function SettingsView() {
             <button
               type="button"
               onClick={() => handleAskReset('pet')}
-              className="w-full rounded-app-sm border border-app-danger px-3 py-2.5 text-xs font-bold text-app-danger active:scale-[0.99]"
+              className="pixel-btn-sm flex min-h-[44px] w-full items-center justify-center gap-1.5 bg-app-card px-2 font-app text-xs font-bold text-app-danger"
             >
               🐣 Сбросить питомца
             </button>
           )}
 
           {resetTarget === 'progress' ? (
-            <div className="rounded-app-sm border border-app-danger bg-app-card p-3">
-              <p className="text-xs font-semibold text-app-text">
+            <div className="pixel-frame-sm bg-app-card p-2.5">
+              <p className="font-app text-xs font-semibold leading-snug text-app-text">
                 Сбросить прогресс уроков? Все пройденные уроки снова станут доступны как новые.
               </p>
               <div className="mt-2 flex gap-2">
                 <button
                   type="button"
                   onClick={handleCancelReset}
-                  className="flex-1 rounded-app-sm border border-app-border bg-app-bg px-3 py-2 text-xs font-semibold text-app-text"
+                  className="pixel-btn-sm flex min-h-[44px] flex-1 items-center justify-center bg-app-card px-2 font-app text-xs font-semibold text-app-text"
                 >
                   Отмена
                 </button>
                 <button
                   type="button"
                   onClick={handleConfirmReset}
-                  className="flex-1 rounded-app-sm border border-app-danger px-3 py-2 text-xs font-bold text-app-danger"
+                  className="pixel-btn-sm flex min-h-[44px] flex-1 items-center justify-center bg-app-danger px-2 font-app text-xs font-bold text-app-ink"
                 >
                   Да, сбросить
                 </button>
@@ -241,7 +253,7 @@ export function SettingsView() {
             <button
               type="button"
               onClick={() => handleAskReset('progress')}
-              className="w-full rounded-app-sm border border-app-danger px-3 py-2.5 text-xs font-bold text-app-danger active:scale-[0.99]"
+              className="pixel-btn-sm flex min-h-[44px] w-full items-center justify-center gap-1.5 bg-app-card px-2 font-app text-xs font-bold text-app-danger"
             >
               📖 Сбросить прогресс уроков
             </button>
@@ -249,16 +261,18 @@ export function SettingsView() {
         </div>
       </section>
 
-      <section className="rounded-app border border-app-border bg-app-bg p-4 shadow-app">
-        <h3 className="text-[11px] font-bold uppercase tracking-wide text-app-hint">
+      <section className="pixel-frame bg-app-card p-3">
+        <h3 className="font-display text-[9px] uppercase leading-relaxed text-app-hint">
           О приложении
         </h3>
-        <p className="mt-2 text-sm font-bold text-app-text">Таманг · версия {APP_VERSION}</p>
-        <p className="mt-1 text-[11px] leading-relaxed text-app-hint">
+        <p className="mt-2 font-display text-[9px] leading-relaxed text-app-text">
+          Таманг · версия {APP_VERSION}
+        </p>
+        <p className="mt-2 font-app text-[11px] leading-relaxed text-app-hint">
           Тамагочи для изучения языков: собирай переводы фраз, получай XP и наряжай питомца.
           Стек: React 18, TypeScript, Zustand, Tailwind CSS.
         </p>
-        <p className="mt-2 text-[11px] font-semibold text-app-hint">
+        <p className="mt-2 font-app text-[11px] font-semibold text-app-hint">
           {isTelegram ? '✅ Запущено внутри Telegram' : '🌐 Открыто в браузере (вне Telegram)'}
         </p>
       </section>
