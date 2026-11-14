@@ -26,10 +26,10 @@ export function MenuView() {
   return (
     <div className="flex min-h-0 flex-1 flex-col justify-between gap-2 bg-app-panel p-3">
       <div className="flex items-center gap-2">
-        <PixelIcon name="heart" className="h-6 w-6 shrink-0" />
+        <PixelIcon name="heart" className="h-9 w-9 shrink-0" />
 
         <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <span className="font-display text-[11px] uppercase leading-none text-app-panel-text">
+          <span className="font-display text-[14px] uppercase leading-none text-app-panel-text">
             Сытость
           </span>
           <div
@@ -38,7 +38,7 @@ export function MenuView() {
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={satietyPercent}
-            className="h-[14px] w-full overflow-hidden border-2 border-app-panel-deep bg-app-satiety-track"
+            className="h-[18px] w-[88%] overflow-hidden border-2 border-app-panel-deep bg-app-satiety-track"
           >
             <div
               className="h-full bg-app-satiety-fill"
@@ -47,9 +47,9 @@ export function MenuView() {
           </div>
         </div>
 
-        <div className="pixel-plate flex h-[56px] w-[56px] shrink-0 flex-col justify-between bg-app-food-plate p-1">
-          <PixelIcon name="strawberry" className="h-8 w-8 self-center" />
-          <span className="self-end font-display text-[11px] leading-none text-app-panel-text">
+        <div className="pixel-plate flex h-[72px] w-[72px] shrink-0 flex-col justify-between bg-app-food-plate p-1">
+          <PixelIcon name="strawberry" className="h-11 w-11 self-center" />
+          <span className="self-end font-display text-[15px] leading-none text-app-panel-text">
             x{food}
           </span>
         </div>
@@ -58,10 +58,10 @@ export function MenuView() {
       <PixelButton
         tone="green"
         onClick={handleLesson}
-        className="max-h-[132px] min-h-[64px] w-full flex-1 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-app-panel-text"
+        className="max-h-[132px] min-h-[72px] w-full flex-1 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-app-panel-text"
       >
-        <PixelIcon name="book" className="h-8 w-8" />
-        <span className="font-display text-[20px] uppercase tracking-wide">На болото</span>
+        <PixelIcon name="book" className="h-10 w-10" />
+        <span className="font-display text-[24px] uppercase tracking-wide">На болото</span>
       </PixelButton>
     </div>
   );

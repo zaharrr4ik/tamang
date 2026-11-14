@@ -19,10 +19,10 @@ const PIXEL_HEART_MASK = [
   0, 0, 1, 0, 0,
 ] as const;
 
-/** Размер одного пикселя сердца, px. */
-const HEART_CELL_PX = 4;
+/** Размер одного пикселя сердца, px: 5 ячеек × 6 px = 30×30 px. */
+const HEART_CELL_PX = 6;
 
-/** Пиксельное сердце (20×20 px) из цветов палитры. */
+/** Пиксельное сердце (30×30 px) из цветов палитры. */
 export function PixelHeart({ tone }: { tone: HeartTone }) {
   return (
     <span

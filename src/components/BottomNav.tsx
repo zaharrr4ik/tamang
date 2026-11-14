@@ -50,13 +50,15 @@ export function BottomNav() {
               onClick={() => handleOpen(tab.id)}
               aria-current={isActive ? 'page' : undefined}
               className={[
-                'm-1 flex min-h-[56px] flex-1 select-none flex-col items-center justify-center gap-1',
+                'm-0.5 flex min-h-[62px] min-w-0 flex-1 select-none flex-col items-center justify-center gap-1',
                 'rounded-app-sm px-1 py-1.5 leading-none',
                 isActive ? 'bg-app-nav-active text-app-nav-active-text' : 'text-app-nav-text',
               ].join(' ')}
             >
               <PixelIcon name={NAV_ICONS[tab.id]} className="h-8 w-8" />
-              <span className="font-display text-[10px] leading-none">{tab.title}</span>
+              <span className="font-display text-[13px] leading-none whitespace-nowrap">
+                {tab.title}
+              </span>
             </button>
           );
         })}

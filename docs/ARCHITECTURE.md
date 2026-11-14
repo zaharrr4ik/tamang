@@ -24,7 +24,7 @@
 │ store/  petStore, uiStore, lessonStore, settingsStore        │
 │ lib/    audio.ts, voice.ts, telegram/*                       │
 │ data/   lessons.ts, shopItems.ts, petConfig.ts               │
-│ assets/ fonts/jambilee.woff2, icons/*.png, pet/*.png         │
+│ assets/ fonts/mediocre-cartoon.ttf, icons/*.png, pet/*.png   │
 ├─────────────────────────────────────────────────────────────┤
 │ types/index.ts — доменные типы и интерфейсы, без реализации  │
 └─────────────────────────────────────────────────────────────┘
@@ -50,7 +50,7 @@
 
 ```text
 uiStore.screen
-├── 'start' → StartScreen (яйцо + «Play!») — uiStore.start()
+├── 'start' → StartScreen (пиксельная лягушка-«устройство», без текста) — uiStore.start()
 └── 'main'  → MainScreen
              ├── PetHalf      — постоянная зона (не зависит от bottomTab)
              │                  (PetHud + LCD-сцена PetStage)
@@ -62,6 +62,23 @@ uiStore.screen
 Навигация хранится в `uiStore` (`screen`, `bottomTab`), роутера и URL-маршрутов нет. Смена
 вкладки меняет только `BottomHalf`; `PetHalf` не перемонтируется, поэтому состояние и анимации
 питомца сохраняются.
+
+**Геометрия сцены питомца.** Кадр спрайт-листа 64×64, рабочая обрезка `FROG_CROP` — 28×16
+(x=18, y=24; нижняя граница — лапы), масштаб `FROG_SCALE = 6` ⇒ отрисовка 168×96 px
+(`FROG_DISPLAY_WIDTH`/`FROG_DISPLAY_HEIGHT`), тень `FROG_SHADOW_WIDTH = 101` px (60% ширины
+спрайта). Пол `.pixel-floor` — `max(48, 22% высоты сцены)` (`MIN_FLOOR_HEIGHT = 48`,
+`FLOOR_HEIGHT_RATIO = 0.22`); базовая линия блуждания — от горизонта пола до `height − 6`.
+Потолок подъёма при переносе — `getMaxLift() = min(height − FROG_DISPLAY_HEIGHT − 8,
+baselineY − FROG_DISPLAY_HEIGHT − 8)`: питомца можно утащить на всю высоту LCD, верх спрайта не
+заходит выше 8 px от кромки (раньше потолок считался от линии горизонта пола, и выше неё поднять
+было нельзя). Ховер-подскок ограничен тем же `min(HOP_PEAK, getMaxLift())`.
+
+**Анимация.** Покадровая — только у посадки: `land` 2 кадра, смена через 120 мс, `landing`
+300 мс. Idle-цикл удалён: в листе `idle` 4 кадра, но 1/2/3 попиксельно идентичны (надутый
+живот), 0 — сдутый; переключение читалось как мерцание «дыхания» (~5 fps). Во всех состояниях
+(`idle`/`walk`/`turn`/`held`) рендерится один кадр `FROG_IDLE_FRAME = 1`; блуждание (X 6–10,
+Y 4–7 px/s), разворот и подскок — через CSS-трансформации, rAF пишет `transform` в DOM без
+ре-рендеров React.
 
 `LessonView` — пример модуля с внутренними состояниями (они локальны и не попадают в `uiStore`):
 пока сессия не активна (`currentLessonId === null`), показывается список уроков с прогрессом;
@@ -176,8 +193,11 @@ export function getBottomTab(id: BottomTabId): BottomTabEntry;
 - **Стили.** Telegram-переменные → семантические токены `--app-*` в `src/index.css` → классы
   Tailwind (`bg-app-bg`, `text-app-text`, `bg-app-panel`, ...). Компоненты не хардкодят цвета
   и не проверяют тему вручную: `--app-*` меняются вместе с `html.dark`. Иконки — только
-  `PixelIcon` (растровые PNG из `src/assets/icons`); шрифты — self-hosted Jambilee (латиница/
-  цифры) + Pixelify Sans (кириллица), без CDN.
+  `PixelIcon` (растровые PNG из `src/assets/icons`); шрифты — self-hosted `Mediocre Cartoon`
+  (TTF, один вес 400) на весь интерфейс, `Pixelify Sans` в стеке — только фолбэк для
+  отсутствующих глифов (`« » … №`), без CDN. Размеры текста — по шкале Tailwind `text-xs`…
+  `text-2xl` (15/20 … 28/32 px) для смыслового текста; микро-подписи (бейджи, категории,
+  навигация) — 12–14 px, жёсткий минимум 12 px.
 - **Сервисы.** `audioService` (`isSupported = false`) и `voiceInputService` (`isSupported = false`)
   — интерфейсы с no-op реализациями в `src/lib`. Звуковые эффекты UI уже идут через
   `useUiFeedback().playSound(...)`; кнопки урока «Прослушать» и «Голосом» — `disabled` с бейджем

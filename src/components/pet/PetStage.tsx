@@ -20,9 +20,13 @@ import { FROG_DISPLAY_HEIGHT, FROG_DISPLAY_WIDTH } from './petSprites';
 import { FROG_SHADOW_WIDTH, useFrogWalk } from './useFrogWalk';
 
 /** Минимальная высота пола, px. */
-const MIN_FLOOR_HEIGHT = 64;
+const MIN_FLOOR_HEIGHT = 48;
 /** Доля высоты сцены, которую занимает пол (остальное — «воздух» LCD-экрана). */
-const FLOOR_HEIGHT_RATIO = 0.34;
+const FLOOR_HEIGHT_RATIO = 0.22;
+/** Зазор от верха спрайта питомца до нижней кромки всплеска сердец, px. */
+const HEART_ABOVE_HEAD_PX = 14;
+/** Случайный разброс сердец вверх от зазора, px. */
+const HEART_RISE_JITTER_PX = 8;
 /** Жизнь одного всплеска сердец, мс (чуть дольше 900 мс анимации). */
 const HEART_LIFETIME_MS = 1000;
 /** Задержка между сердцами одного всплеска, мс. */
@@ -162,7 +166,7 @@ export function PetStage() {
         // Сердца всплывают над головой: считаем верх спрайта по его реальному
         // прямоугольнику (базовая линия плавает по глубине, floorHeight мало).
         bottomPx: clamp(
-          stageRect.bottom - frogRect.top - 14 + Math.random() * 8,
+          stageRect.bottom - frogRect.top - HEART_ABOVE_HEAD_PX + Math.random() * HEART_RISE_JITTER_PX,
           8,
           Math.max(8, stageRect.height - 8),
         ),
@@ -218,7 +222,8 @@ export function PetStage() {
     onLand: handleLand,
   });
 
-  // Реакция на мышь/перо: лягушка поворачивается к указателю и подпрыгивает.
+  // Реакция на мышь/перо: лягушка поворачивается к указателю, а с вероятностью
+  // HOVER_HOP_CHANCE ещё и подпрыгивает (не чаще раза в 8 с).
   const handleStagePointerMove = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>): void => {
       if (event.pointerType === 'mouse' || event.pointerType === 'pen') {
@@ -273,8 +278,9 @@ export function PetStage() {
         style={{ width: FROG_SHADOW_WIDTH }}
       />
 
-      {/* Питомец: absolute-элемент 112×64 px, позицию пишет rAF через transform.
-          Низ элемента (лапки) совпадает с базовой линией baselineY. */}
+      {/* Питомец: absolute-элемент 168×96 px (FROG_DISPLAY_WIDTH/HEIGHT),
+          позицию пишет rAF через transform. Низ элемента (лапки) совпадает
+          с базовой линией baselineY. */}
       <div
         ref={frogRef}
         role="button"

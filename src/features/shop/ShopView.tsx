@@ -36,7 +36,7 @@ export function ShopView() {
     <div className="space-y-3">
       <header className="space-y-1">
         <h2 className="font-display text-xs leading-relaxed text-app-text">Магазин</h2>
-        <p className="font-app text-[11px] leading-snug text-app-hint">
+        <p className="font-app text-[14px] leading-snug text-app-hint">
           Покупки появятся в следующих версиях. Пока доступны предметы, выданные на старте:
           надень их — и они появятся рядом с питомцем.
         </p>
@@ -57,19 +57,19 @@ export function ShopView() {
                   {item.emoji}
                 </span>
                 {isEquipped && (
-                  <span className="pixel-chip shrink-0 bg-app-accent-soft px-1.5 py-1 font-display text-[7px] leading-none text-app-text">
+                  <span className="pixel-chip shrink-0 bg-app-accent-soft px-1.5 py-1 font-display text-[12px] leading-none text-app-text">
                     Надето
                   </span>
                 )}
               </div>
 
-              <h3 className="mt-2 font-display text-[9px] leading-relaxed text-app-text">
+              <h3 className="mt-2 font-display text-[13px] leading-relaxed text-app-text">
                 {item.title}
               </h3>
-              <p className="mt-1 line-clamp-2 font-app text-[11px] leading-snug text-app-hint">
+              <p className="mt-1 line-clamp-3 font-app text-[14px] leading-snug text-app-hint">
                 {item.description}
               </p>
-              <p className="mt-1 font-display text-[7px] uppercase leading-relaxed text-app-hint">
+              <p className="mt-1 font-display text-[12px] uppercase leading-relaxed text-app-hint">
                 {CATEGORY_LABELS[item.category]}
               </p>
 
@@ -81,7 +81,7 @@ export function ShopView() {
                   onClick={() => handleToggleEquip(item)}
                   className={[
                     'pixel-btn-sm flex min-h-[44px] w-full select-none items-center justify-center px-2',
-                    'font-display text-[9px] uppercase leading-none',
+                    'font-display text-[12px] uppercase leading-none',
                     isEquipped
                       ? 'bg-app-card text-app-text'
                       : 'bg-app-accent text-app-accent-contrast',
@@ -94,9 +94,12 @@ export function ShopView() {
                   type="button"
                   disabled
                   title="Покупки появятся в следующих версиях"
-                  className="pixel-frame-sm flex min-h-[44px] w-full cursor-not-allowed select-none items-center justify-center bg-app-card px-2 font-app text-[10px] font-semibold text-app-hint opacity-70"
+                  className="pixel-frame-sm flex min-h-[48px] w-full cursor-not-allowed select-none flex-col items-center justify-center gap-0.5 bg-app-card px-2 py-1 font-app text-[13px] font-semibold leading-tight text-app-hint opacity-70"
                 >
-                  {item.price} 🪙 · Скоро
+                  <span>{item.price} 🪙</span>
+                  <span className="font-display text-[13px] uppercase leading-none tracking-wide">
+                    Скоро
+                  </span>
                 </button>
               )}
             </article>

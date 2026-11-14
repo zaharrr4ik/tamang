@@ -29,9 +29,9 @@ export function BottomHalf() {
         </div>
       ) : (
         <>
-          <div className="flex shrink-0 items-center justify-between gap-2 px-4 pb-1 pt-3">
+          <div className="flex shrink-0 items-center justify-between gap-2 px-4 pb-1.5 pt-3">
             <BackButton />
-            <span className="truncate font-display text-[9px] uppercase tracking-wide text-app-text">
+            <span className="truncate font-display text-[12px] uppercase tracking-wide text-app-text">
               {tab.title}
             </span>
           </div>

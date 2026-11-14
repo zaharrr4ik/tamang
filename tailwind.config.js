@@ -58,8 +58,19 @@ export default {
         'pixel-lg': 'var(--app-pixel-shadow-lg)',
       },
       fontFamily: {
-        app: ['"Pixelify Sans"', '"Jambilee"', 'ui-monospace', 'monospace'],
-        display: ['"Jambilee"', '"Pixelify Sans"', 'ui-monospace', 'monospace'],
+        app: ['"Mediocre Cartoon"', '"Pixelify Sans"', 'ui-monospace', 'monospace'],
+        display: ['"Mediocre Cartoon"', '"Pixelify Sans"', 'ui-monospace', 'monospace'],
+      },
+      /** Увеличенная типографическая шкала: мелкий текст читается на телефоне.
+       *  Произвольные значения (text-[Npx]) в компонентах пересчитаны вручную
+       *  по той же шкале; эти токены — для semantic-классов. */
+      fontSize: {
+        xs: ['15px', { lineHeight: '20px' }],
+        sm: ['17px', { lineHeight: '22px' }],
+        base: ['19px', { lineHeight: '26px' }],
+        lg: ['21px', { lineHeight: '26px' }],
+        xl: ['24px', { lineHeight: '28px' }],
+        '2xl': ['28px', { lineHeight: '32px' }],
       },
       keyframes: {
         float: {

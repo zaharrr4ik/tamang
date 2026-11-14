@@ -1,19 +1,19 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent, RefObject } from 'react';
-import { FROG_DISPLAY_HEIGHT, FROG_DISPLAY_WIDTH, FROG_SHEETS } from './petSprites';
+import { FROG_DISPLAY_HEIGHT, FROG_DISPLAY_WIDTH, FROG_IDLE_FRAME } from './petSprites';
 import type { FrogSpriteState } from './FrogSprite';
 
 /** Ширина пиксельной тени под лапами, px (совпадает с шириной DOM-тени в PetStage). */
 export const FROG_SHADOW_WIDTH = Math.round(FROG_DISPLAY_WIDTH * 0.6);
 
-/** Частота idle-цикла: 4 кадра по 200 мс ≈ 5 fps. */
-const IDLE_FRAME_MS = 200;
-
 /** Минимальное смещение указателя (px), после которого начинается перенос. */
 export const DRAG_THRESHOLD = 6;
 
 /** Пауза между ховер-реакциями, мс. */
-const HOVER_REACTION_COOLDOWN_MS = 2200;
+const HOVER_REACTION_COOLDOWN_MS = 8000;
+
+/** Вероятность, что ховер-реакция закончится подскоком (иначе только разворот). */
+const HOVER_HOP_CHANCE = 0.5;
 
 /** Длительность ховер-подскока, мс. */
 const HOP_DURATION_MS = 340;
@@ -36,7 +36,7 @@ const SHADOW_OFFSET = 10;
 /**
  * Горизонтальная зона блуждания: центр питомца — 8–92% ширины сцены.
  * По краям центр дополнительно ограничен половиной ширины спрайта, иначе
- * лягушка обрезалась бы кромкой сцены (спрайт 112 px шире, чем 8% типичной
+ * лягушка обрезалась бы кромкой сцены (спрайт 168 px шире, чем 8% типичной
  * ширины экрана).
  */
 const WALK_X_MIN_RATIO = 0.08;
@@ -46,17 +46,23 @@ const WALK_X_MAX_RATIO = 0.92;
 const BASELINE_BOTTOM_MARGIN = 6;
 
 /** Скорость блуждания, px/с: медленная, чтобы питомец «жил», а не носился. */
-const WALK_SPEED_X_MIN = 10;
-const WALK_SPEED_X_MAX = 16;
-const WALK_SPEED_Y_MIN = 7;
-const WALK_SPEED_Y_MAX = 12;
+const WALK_SPEED_X_MIN = 6;
+const WALK_SPEED_X_MAX = 10;
+const WALK_SPEED_Y_MIN = 4;
+const WALK_SPEED_Y_MAX = 7;
 
-/** Пауза после прихода к цели, мс: 1500–6500, в основном 2–4 с. */
-const IDLE_PAUSE_MIN = 1500;
-const IDLE_PAUSE_MAX = 6500;
-const IDLE_PAUSE_COMMON_MIN = 2000;
-const IDLE_PAUSE_COMMON_MAX = 4000;
+/** Пауза после прихода к цели, мс: 2500–12000, в основном 4000–9000. */
+const IDLE_PAUSE_MIN = 2500;
+const IDLE_PAUSE_MAX = 12000;
+const IDLE_PAUSE_COMMON_MIN = 4000;
+const IDLE_PAUSE_COMMON_MAX = 9000;
 const IDLE_PAUSE_COMMON_CHANCE = 0.7;
+
+/**
+ * Вероятность, что по завершении паузы питомец выберет новую цель. Иначе он
+ * остаётся стоять ещё одну паузу — так он заметно меньше ходит.
+ */
+const WALK_CHANCE = 0.5;
 
 /** Доля целей в средней трети области: питомец тяготеет к центру. */
 const GOAL_CENTER_BIAS = 0.7;
@@ -173,7 +179,7 @@ function randomBetween(min: number, max: number): number {
   return min + Math.random() * (max - min);
 }
 
-/** Пауза стоя после прихода к цели: в основном 2–4 с, иногда короче или дольше. */
+/** Пауза стоя после прихода к цели: в основном 4–9 с, иногда короче или дольше. */
 function getIdlePauseMs(): number {
   if (Math.random() < IDLE_PAUSE_COMMON_CHANCE) {
     return randomBetween(IDLE_PAUSE_COMMON_MIN, IDLE_PAUSE_COMMON_MAX);
@@ -198,10 +204,11 @@ function pickCenterBiased(min: number, max: number): number {
 
 /**
  * Блуждание питомца по земле: медленная ходьба к случайной цели со смещением
- * к центру области, остановки на idle-кадрах, перенос указателем, падение и
- * приземление. Позиция задаётся базовой линией (низ спрайта — лапки) и пишется
- * напрямую в DOM (transform/opacity), чтобы rAF-цикл не вызывал ре-рендеров
- * React; кадр спрайта обновляется стейтом только при реальной смене кадра.
+ * к центру области, паузы на статичном надутом idle-кадре (FROG_IDLE_FRAME),
+ * перенос указателем, падение и приземление. Позиция задаётся базовой линией
+ * (низ спрайта — лапки) и пишется напрямую в DOM (transform/opacity), чтобы
+ * rAF-цикл не вызывал ре-рендеров React; кадр спрайта обновляется стейтом
+ * только при реальной смене кадра.
  */
 export function useFrogWalk({
   stageRef,
@@ -227,14 +234,12 @@ export function useFrogWalk({
     speedY: WALK_SPEED_Y_MIN,
   });
   const idleUntilRef = useRef(0);
-  const frameIndexRef = useRef(0);
-  const frameAccumulatorRef = useRef(0);
   const bobPhaseRef = useRef(0);
   const turnUntilRef = useRef(0);
   const hopRef = useRef({ startTime: 0, peak: 0 });
   const fallRef = useRef({ startTime: 0, fromLift: 0, duration: 0 });
   const landingStartRef = useRef(0);
-  const lastHoverAtRef = useRef(0);
+  const lastHoverAtRef = useRef(-HOVER_REACTION_COOLDOWN_MS);
   const pressRef = useRef<PressState | null>(null);
   const initializedRef = useRef(false);
   const sizeRef = useRef<SceneSize>({ width: 0, height: 0, floorHeight });
@@ -243,7 +248,7 @@ export function useFrogWalk({
   const onLandRef = useRef(onLand);
   const spriteStateRef = useRef<FrogSpriteState>({
     sheet: 'idle',
-    frame: 0,
+    frame: FROG_IDLE_FRAME,
     facing: 'right',
   });
   const [sprite, setSprite] = useState<FrogSpriteState>(spriteStateRef.current);
@@ -329,10 +334,22 @@ export function useFrogWalk({
     [getWalkBounds],
   );
 
-  /** Сколько места есть над полом для подъёма питомца. */
+  /**
+   * Максимальный подъём питомца над его базовой линией, px.
+   *
+   * Потолок — верх LCD-сцены, а не линия горизонта пола: питомца можно утащить
+   * на всю высоту экрана. Номинальный запас по высоте —
+   * `height - FROG_DISPLAY_HEIGHT - 8` (спрайт целиком влезает в сцену, а верх
+   * спрайта не заходит выше 8 px от кромки). Базовая линия при этом может быть
+   * не у нижней кромки (питомец стоит на полу в глубине), поэтому потолок
+   * дополнительно ограничен её положением: иначе при переносе от середины пола
+   * голова лягушки обрезалась бы верхней кромкой сцены.
+   */
   const getMaxLift = useCallback((): number => {
-    const { height, floorHeight: floor } = sizeRef.current;
-    return Math.max(0, height - floor - FROG_DISPLAY_HEIGHT - 4);
+    const { height } = sizeRef.current;
+    const sceneTopLift = Math.max(0, height - FROG_DISPLAY_HEIGHT - 8);
+    const baselineTopLift = Math.max(0, baselineYRef.current - FROG_DISPLAY_HEIGHT - 8);
+    return Math.min(sceneTopLift, baselineTopLift);
   }, []);
 
   /**
@@ -383,14 +400,13 @@ export function useFrogWalk({
         }
       }
       walkPhaseRef.current = 'moving';
-      frameAccumulatorRef.current = 0;
       bobPhaseRef.current = 0;
-      applySprite({ sheet: 'idle', frame: frameIndexRef.current, facing: facingRef.current.value });
+      applySprite({ sheet: 'idle', frame: FROG_IDLE_FRAME, facing: facingRef.current.value });
     },
     [applySprite, getWalkBounds],
   );
 
-  /** Приход к цели: встаём на idle-кадры и ждём 1500–6500 мс до новой цели. */
+  /** Приход к цели: встаём на фиксированный idle-кадр и ждём 2.5–12 с до новой цели. */
   const arriveAtGoal = useCallback(
     (now: number): void => {
       xRef.current = clampX(goalRef.current.x);
@@ -398,8 +414,7 @@ export function useFrogWalk({
       liftRef.current = 0;
       walkPhaseRef.current = 'idle';
       idleUntilRef.current = now + getIdlePauseMs();
-      frameAccumulatorRef.current = 0;
-      applySprite({ sheet: 'idle', frame: frameIndexRef.current, facing: facingRef.current.value });
+      applySprite({ sheet: 'idle', frame: FROG_IDLE_FRAME, facing: facingRef.current.value });
       writeVisual();
     },
     [applySprite, clampBaseline, clampX, writeVisual],
@@ -423,30 +438,23 @@ export function useFrogWalk({
             }
             walkPhaseRef.current = 'moving';
             turnUntilRef.current = 0;
-            frameAccumulatorRef.current = 0;
             bobPhaseRef.current = 0;
             applySprite({
               sheet: 'idle',
-              frame: frameIndexRef.current,
-              facing: facingRef.current.value,
-            });
-          }
-          // idle-кадры идут всегда: и в движении, и на остановке питомец «дышит».
-          frameAccumulatorRef.current += dt * 1000;
-          if (frameAccumulatorRef.current >= IDLE_FRAME_MS) {
-            frameAccumulatorRef.current %= IDLE_FRAME_MS;
-            frameIndexRef.current = (frameIndexRef.current + 1) % FROG_SHEETS.idle.frameCount;
-            applySprite({
-              sheet: 'idle',
-              frame: frameIndexRef.current,
+              frame: FROG_IDLE_FRAME,
               facing: facingRef.current.value,
             });
           }
           if (walkPhaseRef.current === 'idle') {
-            // Стоим на месте до конца паузы, затем выбираем новую цель.
+            // Стоим на месте до конца паузы. По её завершении с вероятностью
+            // WALK_CHANCE выбираем новую цель, иначе остаёмся стоять ещё паузу.
             liftRef.current = 0;
             if (now >= idleUntilRef.current) {
-              chooseGoal(now);
+              if (Math.random() < WALK_CHANCE) {
+                chooseGoal(now);
+              } else {
+                idleUntilRef.current = now + getIdlePauseMs();
+              }
             }
             writeVisual();
             break;
@@ -461,13 +469,13 @@ export function useFrogWalk({
             arriveAtGoal(now);
             break;
           }
-          // Идём к цели по осям со своими скоростями: X 10–16, Y 7–12 px/с.
+          // Идём к цели по осям со своими скоростями: X 6–10, Y 4–7 px/с.
           const stepX = needsX ? Math.sign(dx) * Math.min(Math.abs(dx), motion.speedX * dt) : 0;
           const stepY = needsY ? Math.sign(dy) * Math.min(Math.abs(dy), motion.speedY * dt) : 0;
           xRef.current += stepX;
           baselineYRef.current += stepY;
           // Лёгкое покачивание корпуса в такт шагам: без него ходьба читается
-          // как скольжение (idle-кадры почти одинаковые).
+          // как скольжение (idle-кадр статичный и не меняется).
           bobPhaseRef.current += Math.hypot(stepX, stepY);
           liftRef.current =
             Math.abs(Math.sin((bobPhaseRef.current / WALK_BOB_PERIOD_PX) * Math.PI)) * WALK_BOB_PX;
@@ -488,10 +496,9 @@ export function useFrogWalk({
             modeRef.current = 'walk';
             liftRef.current = 0;
             facingRef.current = { value: directionRef.current === 1 ? 'right' : 'left' };
-            frameAccumulatorRef.current = 0;
             applySprite({
               sheet: 'idle',
-              frame: frameIndexRef.current,
+              frame: FROG_IDLE_FRAME,
               facing: facingRef.current.value,
             });
           }
@@ -523,10 +530,9 @@ export function useFrogWalk({
             modeRef.current = 'walk';
             walkPhaseRef.current = 'idle';
             idleUntilRef.current = now + getIdlePauseMs();
-            frameAccumulatorRef.current = 0;
             applySprite({
               sheet: 'idle',
-              frame: frameIndexRef.current,
+              frame: FROG_IDLE_FRAME,
               facing: facingRef.current.value,
             });
           }
@@ -573,9 +579,8 @@ export function useFrogWalk({
     walkPhaseRef.current = 'idle';
     liftRef.current = 0;
     turnUntilRef.current = 0;
-    frameAccumulatorRef.current = 0;
     idleUntilRef.current = performance.now() + getIdlePauseMs();
-    applySprite({ sheet: 'idle', frame: 0, facing: facingRef.current.value });
+    applySprite({ sheet: 'idle', frame: FROG_IDLE_FRAME, facing: facingRef.current.value });
     writeVisual();
   }, [animationsEnabled, applySprite, writeVisual]);
 
@@ -629,12 +634,11 @@ export function useFrogWalk({
       if (modeRef.current === 'walk' || modeRef.current === 'hop') {
         modeRef.current = 'held';
         turnUntilRef.current = 0;
-        frameAccumulatorRef.current = 0;
         liftRef.current = 0;
         writeVisual();
         applySprite({
           sheet: 'idle',
-          frame: frameIndexRef.current,
+          frame: FROG_IDLE_FRAME,
           facing: facingRef.current.value,
         });
       }
@@ -712,11 +716,10 @@ export function useFrogWalk({
           walkPhaseRef.current = 'idle';
           idleUntilRef.current = performance.now() + getIdlePauseMs();
           liftRef.current = 0;
-          frameAccumulatorRef.current = 0;
           writeVisual();
           applySprite({
             sheet: 'idle',
-            frame: frameIndexRef.current,
+            frame: FROG_IDLE_FRAME,
             facing: facingRef.current.value,
           });
           return;
@@ -731,16 +734,15 @@ export function useFrogWalk({
         return;
       }
       // Отпускание без переноса — это всегда тап: питомец переживает ласку,
-      // встаёт на idle-кадры и чуть позже выбирает новую цель.
+      // встаёт на фиксированный idle-кадр и чуть позже выбирает новую цель.
       modeRef.current = 'walk';
       walkPhaseRef.current = 'idle';
       idleUntilRef.current = performance.now() + getIdlePauseMs();
       liftRef.current = 0;
-      frameAccumulatorRef.current = 0;
       writeVisual();
       applySprite({
         sheet: 'idle',
-        frame: frameIndexRef.current,
+        frame: FROG_IDLE_FRAME,
         facing: facingRef.current.value,
       });
       if (!cancelled) {
@@ -772,8 +774,9 @@ export function useFrogWalk({
   );
 
   /**
-   * Ховер-реакция: питомец поворачивается мордой к указателю и делает
-   * короткий подскок (кадр jump). Не чаще одного раза в 2,2 с.
+   * Ховер-реакция: питомец поворачивается мордой к указателю, а с вероятностью
+   * HOVER_HOP_CHANCE ещё и делает короткий подскок (кадр jump). Реакция — не
+   * чаще одного раза в 8 с, так что питомец прыгает заметно реже.
    */
   const reactToPointer = useCallback(
     (clientX: number): void => {
@@ -795,9 +798,14 @@ export function useFrogWalk({
       const stageRect = stage.getBoundingClientRect();
       const pointerX = clientX - stageRect.left;
       facingRef.current = { value: pointerX >= xRef.current ? 'right' : 'left' };
-      modeRef.current = 'hop';
-      hopRef.current = { startTime: now, peak: Math.min(HOP_PEAK, getMaxLift()) };
-      applySprite({ sheet: 'jump', frame: 0, facing: facingRef.current.value });
+      if (Math.random() < HOVER_HOP_CHANCE) {
+        modeRef.current = 'hop';
+        hopRef.current = { startTime: now, peak: Math.min(HOP_PEAK, getMaxLift()) };
+        applySprite({ sheet: 'jump', frame: 0, facing: facingRef.current.value });
+        return;
+      }
+      // Без подскока — просто разворот мордой к указателю на том же idle-кадре.
+      applySprite({ sheet: 'idle', frame: FROG_IDLE_FRAME, facing: facingRef.current.value });
     },
     [applySprite, getMaxLift, stageRef],
   );

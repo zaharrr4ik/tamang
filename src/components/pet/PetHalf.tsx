@@ -11,12 +11,16 @@ import { PetStage } from './PetStage';
  * его целиком через absolute inset-0 (пол при этом рисуется внутри PetStage
  * и совпадает с нижней кромкой экрана). Обёртка absolute inset-0 гарантирует
  * сцене полноразмерный positioned-родитель.
+ *
+ * Высота: 58% на обычных экранах. На низких (≤640px) — 52%: крупные тексты
+ * вкладок требуют места, а сцена с питомцем и так держит минимум по высоте
+ * (лента HUD 54px + пол 22%), поэтому там её долю уменьшаем.
  */
 export function PetHalf() {
   return (
     <section
       aria-label="Питомец"
-      className="relative flex h-[58%] min-h-[240px] shrink-0 flex-col gap-1.5 pt-[calc(var(--app-safe-top)+0.5rem)]"
+      className="relative flex h-[58%] min-h-[240px] shrink-0 flex-col gap-1.5 pt-[calc(var(--app-safe-top)+0.5rem)] [@media(max-height:640px)]:h-[52%]"
     >
       {/* Тёмная полоса устройства с HUD уровня, серии заходов и монет. */}
       <div className="shrink-0 bg-app-panel px-2 py-1.5">

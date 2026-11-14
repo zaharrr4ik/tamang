@@ -11,8 +11,8 @@ const TONE_CLASS: Record<PixelButtonTone, string> = {
 };
 
 const SIZE_CLASS: Record<PixelButtonSize, string> = {
-  md: 'min-h-[52px] px-5 py-3 text-lg font-semibold',
-  sm: 'min-h-[40px] px-3 py-2 text-sm font-semibold',
+  md: 'min-h-[52px] px-5 py-3 text-xl font-semibold',
+  sm: 'min-h-[44px] px-3 py-2 text-base font-semibold',
 };
 
 export interface PixelButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {

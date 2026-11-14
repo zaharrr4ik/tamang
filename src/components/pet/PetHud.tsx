@@ -24,7 +24,7 @@ export function PetHud() {
     progress.percent >= INK_TEXT_FROM_PERCENT ? 'text-app-ink' : 'text-app-panel-text';
 
   return (
-    <div className="flex h-[34px] items-stretch gap-1.5">
+    <div className="flex h-[42px] items-stretch gap-1.5">
       {/* Уровень: тёмная шкала с зелёной заливкой прогресса и подписью поверх неё. */}
       <div className="pixel-plate relative min-w-0 flex-[1.6] overflow-hidden bg-app-level-track">
         <div
@@ -33,7 +33,7 @@ export function PetHud() {
           style={{ width: `${progress.percent}%` }}
         />
         <span
-          className={`relative flex h-full items-center px-2 font-display text-[12px] leading-none ${levelTextClass}`}
+          className={`relative flex h-full items-center px-2 font-display text-[16px] leading-none ${levelTextClass}`}
         >
           Ур. {progress.level}
         </span>
@@ -41,14 +41,14 @@ export function PetHud() {
 
       {/* Серия заходов: пиксельный огонёк + число дней. */}
       <div className="pixel-plate flex min-w-0 flex-1 items-center justify-center gap-1 bg-app-panel px-1">
-        <PixelIcon name="fire" className="h-6 w-6" />
-        <span className="font-display text-[13px] leading-none text-app-panel-text">{streak}</span>
+        <PixelIcon name="fire" className="h-8 w-8" />
+        <span className="font-display text-[17px] leading-none text-app-panel-text">{streak}</span>
       </div>
 
       {/* Баланс монет: пиксельная монета + число. */}
       <div className="pixel-plate flex min-w-0 flex-1 items-center justify-center gap-1 bg-app-panel px-1">
-        <PixelIcon name="coin" className="h-6 w-6" />
-        <span className="font-display text-[13px] leading-none text-app-panel-text">{coins}</span>
+        <PixelIcon name="coin" className="h-8 w-8" />
+        <span className="font-display text-[17px] leading-none text-app-panel-text">{coins}</span>
       </div>
     </div>
   );

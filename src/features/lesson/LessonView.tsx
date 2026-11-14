@@ -86,7 +86,7 @@ export function LessonView() {
     return (
       <div className="pixel-frame bg-app-card p-6 text-center">
         <p className="text-3xl leading-none" aria-hidden="true">🗂️</p>
-        <p className="mt-3 font-display text-[10px] leading-relaxed text-app-text">
+        <p className="mt-3 font-display text-[13px] leading-relaxed text-app-text">
           Уроки пока не загружены
         </p>
         <p className="mt-2 font-app text-xs text-app-hint">Загляни сюда чуть позже.</p>
@@ -116,7 +116,7 @@ export function LessonView() {
         <p className="mt-2 font-app text-sm leading-snug text-app-hint">
           Ты прошёл {lessons.length} из {lessons.length} уроков. Питомец гордится тобой.
         </p>
-        <p className="pixel-chip mt-3 inline-block bg-app-yellow px-2.5 py-1.5 font-display text-[9px] leading-none text-app-ink">
+        <p className="pixel-chip mt-3 inline-block bg-app-yellow px-2.5 py-1.5 font-display text-[12px] leading-none text-app-ink">
           Всего XP: {totalXp}
         </p>
         <div className="mt-4 flex flex-col gap-2.5">
@@ -137,7 +137,7 @@ export function LessonView() {
       <div className="space-y-3">
         <header className="space-y-1">
           <h2 className="font-display text-xs leading-relaxed text-app-text">Уроки</h2>
-          <p className="font-app text-[11px] leading-snug text-app-hint">
+          <p className="font-app text-[14px] leading-snug text-app-hint">
             Собери перевод фразы из слов и получи XP.
           </p>
         </header>
@@ -157,11 +157,11 @@ export function LessonView() {
 
         <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 font-app text-xs text-app-hint">
           Пройдено уроков:
-          <span className="font-display text-[10px] text-app-text">{completedCount}</span>
+          <span className="font-display text-[13px] text-app-text">{completedCount}</span>
           из
-          <span className="font-display text-[10px] text-app-text">{lessons.length}</span>
-          ·
-          <span className="font-display text-[10px] text-app-text">{totalXp} XP</span>
+          <span className="font-display text-[13px] text-app-text">{lessons.length}</span>
+          <span aria-hidden="true" className="h-1 w-1 shrink-0 bg-app-hint" />
+          <span className="font-display text-[13px] text-app-text">{totalXp} XP</span>
         </p>
 
         {allCompleted && (
@@ -184,7 +184,7 @@ export function LessonView() {
                     aria-hidden="true"
                     className={[
                       'flex h-10 w-10 shrink-0 items-center justify-center border-2 border-app-ink',
-                      'font-display text-[11px] leading-none',
+                      'font-display text-[14px] leading-none',
                       isDone
                         ? 'bg-app-accent text-app-accent-contrast'
                         : 'bg-app-screen text-app-ink',
@@ -196,11 +196,11 @@ export function LessonView() {
                     <span className="block font-app text-sm font-bold text-app-text">
                       {lesson.title}
                     </span>
-                    <span className="mt-0.5 block truncate font-app text-[11px] text-app-hint">
+                    <span className="mt-0.5 block truncate font-app text-[14px] text-app-hint">
                       {lesson.petPhrase}
                     </span>
                   </span>
-                  <span className="shrink-0 font-display text-[8px] leading-relaxed text-app-hint">
+                  <span className="shrink-0 font-display text-[12px] leading-relaxed text-app-hint">
                     {isDone ? 'Пройден' : `+${lesson.xpReward} XP`}
                   </span>
                 </button>
@@ -238,12 +238,12 @@ export function LessonView() {
     <div className="space-y-3">
       <header className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <h2 className="font-display text-[10px] leading-relaxed text-app-text">
+          <h2 className="font-display text-[13px] leading-relaxed text-app-text">
             Урок {lessonNumber} из {lessons.length}
           </h2>
-          <p className="mt-1 truncate font-app text-[11px] text-app-hint">{lesson.title}</p>
+          <p className="mt-1 truncate font-app text-[14px] text-app-hint">{lesson.title}</p>
         </div>
-        <span className="pixel-chip shrink-0 bg-app-yellow px-2 py-1.5 font-display text-[9px] leading-none text-app-ink">
+        <span className="pixel-chip shrink-0 bg-app-yellow px-2 py-1.5 font-display text-[12px] leading-none text-app-ink">
           +{lesson.xpReward} XP
         </span>
       </header>
@@ -261,7 +261,7 @@ export function LessonView() {
           <p className="pixel-frame-sm bg-app-screen px-3 py-2 font-app text-sm font-semibold leading-snug text-app-ink">
             {lesson.petPhrase}
           </p>
-          <p className="mt-1.5 font-app text-[11px] leading-snug text-app-hint">
+          <p className="mt-1.5 font-app text-[14px] leading-snug text-app-hint">
             {lesson.instruction}
           </p>
         </div>
@@ -273,10 +273,10 @@ export function LessonView() {
           type="button"
           disabled
           title="Озвучка появится в следующих версиях"
-          className="pixel-frame-sm flex min-h-[44px] select-none items-center justify-center gap-1 bg-app-card px-2 font-app text-[11px] font-semibold text-app-hint opacity-70"
+          className="pixel-frame-sm flex min-h-[52px] flex-wrap items-center justify-center gap-x-1 gap-y-1 bg-app-card px-1.5 py-1.5 text-center font-app text-[14px] font-semibold leading-tight text-app-hint opacity-70"
         >
           <span aria-hidden="true">🔊</span> Прослушать
-          <span className="border border-app-ink px-1 py-0.5 font-display text-[8px] uppercase leading-none">
+          <span className="border border-app-ink px-1 py-0.5 font-display text-[12px] uppercase leading-none">
             скоро
           </span>
         </button>
@@ -284,10 +284,10 @@ export function LessonView() {
           type="button"
           disabled
           title="Голосовой ввод появится в следующих версиях"
-          className="pixel-frame-sm flex min-h-[44px] select-none items-center justify-center gap-1 bg-app-card px-2 font-app text-[11px] font-semibold text-app-hint opacity-70"
+          className="pixel-frame-sm flex min-h-[52px] flex-wrap items-center justify-center gap-x-1 gap-y-1 bg-app-card px-1.5 py-1.5 text-center font-app text-[14px] font-semibold leading-tight text-app-hint opacity-70"
         >
           <span aria-hidden="true">🎙️</span> Голосом
-          <span className="border border-app-ink px-1 py-0.5 font-display text-[8px] uppercase leading-none">
+          <span className="border border-app-ink px-1 py-0.5 font-display text-[12px] uppercase leading-none">
             скоро
           </span>
         </button>
@@ -295,12 +295,12 @@ export function LessonView() {
 
       {/* Трей ответа: тап по слову убирает его из ответа */}
       <div>
-        <p className="mb-1.5 font-display text-[8px] uppercase leading-relaxed text-app-hint">
+        <p className="mb-1.5 font-display text-[12px] uppercase leading-relaxed text-app-hint">
           Твой ответ
         </p>
         <div className="pixel-frame-sm min-h-[68px] bg-app-screen p-2">
           {selectedWords.length === 0 ? (
-            <p className="px-1 py-2 font-app text-[11px] text-app-ink">
+            <p className="px-1 py-2 font-app text-[14px] text-app-ink">
               Нажми на слова ниже, чтобы собрать перевод
             </p>
           ) : (
@@ -312,7 +312,7 @@ export function LessonView() {
                   disabled={isAnswerLocked}
                   onClick={() => handleRemoveWord(index)}
                   aria-label={`Убрать слово «${word.text}»`}
-                  className="pixel-chip flex min-h-[44px] select-none items-center bg-app-card px-2.5 py-1.5 font-app text-sm text-app-text disabled:opacity-70"
+                  className="pixel-chip flex min-h-[48px] select-none items-center bg-app-card px-2.5 py-1.5 font-app text-sm text-app-text disabled:opacity-70"
                 >
                   {word.text}
                 </button>
@@ -324,7 +324,7 @@ export function LessonView() {
 
       {/* Банк слов: тап добавляет слово в ответ */}
       <div>
-        <p className="mb-1.5 font-display text-[8px] uppercase leading-relaxed text-app-hint">
+        <p className="mb-1.5 font-display text-[12px] uppercase leading-relaxed text-app-hint">
           Банк слов
         </p>
         <div className="flex flex-wrap gap-1.5">
@@ -334,7 +334,7 @@ export function LessonView() {
               type="button"
               disabled={isAnswerLocked}
               onClick={() => handleSelectWord(word.id)}
-              className="pixel-chip flex min-h-[44px] select-none items-center bg-app-card px-3 py-1.5 font-app text-sm font-semibold text-app-text disabled:opacity-50"
+              className="pixel-chip flex min-h-[48px] select-none items-center bg-app-card px-3 py-1.5 font-app text-sm font-semibold text-app-text disabled:opacity-50"
             >
               {word.text}
             </button>
@@ -345,7 +345,7 @@ export function LessonView() {
       {/* Обратная связь после проверки */}
       {isCorrect && (
         <div role="status" className="pixel-frame bg-app-accent-soft px-3 py-2.5">
-          <p className="inline-block bg-app-accent px-2 py-1 font-display text-[9px] leading-none text-app-accent-contrast">
+          <p className="inline-block bg-app-accent px-2 py-1 font-display text-[12px] leading-none text-app-accent-contrast">
             Верно! 🎉
           </p>
           <p className="mt-1.5 font-app text-xs text-app-hint">+{lesson.xpReward} XP питомцу</p>
@@ -356,11 +356,11 @@ export function LessonView() {
       )}
       {isWrong && (
         <div role="status" className="pixel-frame bg-app-card px-3 py-2.5">
-          <p className="inline-block bg-app-danger px-2 py-1 font-display text-[9px] leading-none text-app-ink">
+          <p className="inline-block bg-app-danger px-2 py-1 font-display text-[12px] leading-none text-app-ink">
             Пока неверно
           </p>
           <p className="mt-1.5 font-app text-xs text-app-hint">
-            Попытка №{attempts}. Попробуй ещё раз или посмотри правильный перевод.
+            Попытка {attempts}. Попробуй ещё раз или посмотри правильный перевод.
           </p>
           <p className="mt-1 font-app text-xs text-app-text">
             Правильный перевод: {lesson.translation}
@@ -375,7 +375,13 @@ export function LessonView() {
               нужно собрать ответ заново. */}
           {isCorrect && (
             <PixelButton tone="green" onClick={handleNext} className="w-full">
-              Дальше →
+              <span className="flex items-center justify-center gap-1.5">
+                Дальше
+                <span
+                  aria-hidden="true"
+                  className="h-0 w-0 shrink-0 border-y-[5px] border-l-[7px] border-y-transparent border-l-current"
+                />
+              </span>
             </PixelButton>
           )}
           {isWrong && (
@@ -408,9 +414,13 @@ export function LessonView() {
       <button
         type="button"
         onClick={handleExit}
-        className="flex min-h-[44px] w-full select-none items-center justify-center font-app text-xs font-semibold text-app-hint underline underline-offset-2"
+        className="flex min-h-[44px] w-full select-none items-center justify-center gap-1.5 font-app text-xs font-semibold text-app-hint underline underline-offset-2"
       >
-        ← Выйти из урока
+        <span
+          aria-hidden="true"
+          className="h-0 w-0 shrink-0 border-y-[5px] border-r-[7px] border-y-transparent border-r-current"
+        />
+        Выйти из урока
       </button>
     </div>
   );

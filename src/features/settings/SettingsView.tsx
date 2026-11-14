@@ -34,7 +34,7 @@ function ToggleRow({ label, hint, emoji, checked, onChange, animated }: ToggleRo
       </span>
       <span className="min-w-0 flex-1">
         <span className="block font-app text-sm font-bold text-app-text">{label}</span>
-        <span className="mt-0.5 block font-app text-[11px] leading-snug text-app-hint">
+        <span className="mt-0.5 block font-app text-[14px] leading-snug text-app-hint">
           {hint}
         </span>
       </span>
@@ -43,13 +43,14 @@ function ToggleRow({ label, hint, emoji, checked, onChange, animated }: ToggleRo
         aria-hidden="true"
         className={[
           'relative h-7 w-12 shrink-0 border-2 border-app-ink',
-          checked ? 'bg-app-accent' : 'bg-app-card',
+          checked ? 'bg-app-accent' : 'bg-app-bg',
           animated ? 'transition-colors duration-200' : '',
         ].join(' ')}
       >
         <span
           className={[
-            'absolute left-0.5 top-0.5 h-5 w-5 border-2 border-app-ink bg-app-card',
+            'absolute left-0.5 top-0.5 h-5 w-5 border-2 border-app-ink',
+            checked ? 'bg-app-card' : 'bg-app-hint',
             checked ? 'translate-x-[20px]' : 'translate-x-0',
             animated ? 'transition-transform duration-200' : '',
           ].join(' ')}
@@ -140,7 +141,7 @@ export function SettingsView() {
     <div className="space-y-3">
       <header className="space-y-1">
         <h2 className="font-display text-xs leading-relaxed text-app-text">Настройки</h2>
-        <p className="font-app text-[11px] leading-snug text-app-hint">
+        <p className="font-app text-[14px] leading-snug text-app-hint">
           Настрой приложение под себя.
         </p>
       </header>
@@ -155,7 +156,7 @@ export function SettingsView() {
       )}
 
       <section className="pixel-frame bg-app-card p-3">
-        <h3 className="font-display text-[9px] uppercase leading-relaxed text-app-hint">
+        <h3 className="font-display text-[12px] uppercase leading-relaxed text-app-hint">
           Ощущения и анимации
         </h3>
         <div className="mt-1 divide-y divide-app-border">
@@ -187,10 +188,10 @@ export function SettingsView() {
       </section>
 
       <section className="pixel-frame bg-app-card p-3">
-        <h3 className="font-display text-[9px] uppercase leading-relaxed text-app-hint">
+        <h3 className="font-display text-[12px] uppercase leading-relaxed text-app-hint">
           Сброс данных
         </h3>
-        <p className="mt-1 font-app text-[11px] leading-snug text-app-hint">
+        <p className="mt-1 font-app text-[14px] leading-snug text-app-hint">
           Действия необратимы — прогресс хранится только на этом устройстве.
         </p>
 
@@ -262,17 +263,17 @@ export function SettingsView() {
       </section>
 
       <section className="pixel-frame bg-app-card p-3">
-        <h3 className="font-display text-[9px] uppercase leading-relaxed text-app-hint">
+        <h3 className="font-display text-[12px] uppercase leading-relaxed text-app-hint">
           О приложении
         </h3>
-        <p className="mt-2 font-display text-[9px] leading-relaxed text-app-text">
-          Таманг · версия {APP_VERSION}
+        <p className="mt-2 font-display text-[12px] leading-relaxed text-app-text">
+          Таманг — версия {APP_VERSION}
         </p>
-        <p className="mt-2 font-app text-[11px] leading-relaxed text-app-hint">
+        <p className="mt-2 font-app text-[14px] leading-relaxed text-app-hint">
           Тамагочи для изучения языков: собирай переводы фраз, получай XP и наряжай питомца.
           Стек: React 18, TypeScript, Zustand, Tailwind CSS.
         </p>
-        <p className="mt-2 font-app text-[11px] font-semibold text-app-hint">
+        <p className="mt-2 font-app text-[14px] font-semibold text-app-hint">
           {isTelegram ? '✅ Запущено внутри Telegram' : '🌐 Открыто в браузере (вне Telegram)'}
         </p>
       </section>

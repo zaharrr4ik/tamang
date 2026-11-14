@@ -21,9 +21,13 @@ export function BackButton() {
       type="button"
       onClick={handleClick}
       aria-label="Вернуться в главное меню"
-      className="pixel-btn-sm flex min-h-[44px] select-none items-center justify-center gap-1.5 bg-app-card px-2.5 font-display text-[10px] leading-none text-app-text"
+      className="pixel-btn-sm flex min-h-[44px] select-none items-center justify-center gap-1.5 bg-app-card px-2.5 font-display text-[13px] leading-none text-app-text"
     >
-      <span aria-hidden="true">←</span>
+      {/* Стрелка — CSS-треугольник: в Mediocre Cartoon нет глифа «←» (см. README §10.1). */}
+      <span
+        aria-hidden="true"
+        className="h-0 w-0 shrink-0 border-y-[5px] border-r-[7px] border-y-transparent border-r-app-text"
+      />
       Назад
     </button>
   );
