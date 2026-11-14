@@ -24,11 +24,15 @@ export interface PetConfig {
   reactionTimeoutMs: number;
   /** Пороги опыта по уровням: элемент с индексом i — минимальный XP для уровня i + 1. */
   levelThresholds: readonly number[];
+  /** Стартовый запас монет. */
+  defaultCoins: number;
+  /** Стартовый запас еды (клубника). */
+  defaultFood: number;
 }
 
 export const PET_CONFIG: PetConfig = {
   defaultName: 'Таманг',
-  defaultStats: { health: 100, mood: 100 },
+  defaultStats: { health: 100, mood: 100, satiety: 60 },
   expressions: {
     idle: '🐥',
     happy: '🥰',
@@ -41,6 +45,8 @@ export const PET_CONFIG: PetConfig = {
   clickHealthGain: 1,
   reactionTimeoutMs: 1200,
   levelThresholds: [0, 50, 120, 220, 350, 520, 750, 1050],
+  defaultCoins: 120,
+  defaultFood: 2,
 };
 
 /**
@@ -58,4 +64,45 @@ export function getPetLevel(totalXp: number): number {
     }
   }
   return level;
+}
+
+/** Прогресс внутри текущего уровня — для плашки уровня в HUD. */
+export interface LevelProgress {
+  /** Текущий уровень (с 1). */
+  level: number;
+  /** Опыт, накопленный внутри текущего уровня. */
+  xpInLevel: number;
+  /** Сколько опыта нужно до следующего уровня, `null` на максимальном уровне. */
+  xpForNextLevel: number | null;
+  /** Заполнение шкалы уровня, 0..100. */
+  percent: number;
+}
+
+/**
+ * Считает прогресс до следующего уровня.
+ * На максимальном уровне шкала всегда заполнена, `xpForNextLevel = null`.
+ */
+export function getLevelProgress(totalXp: number): LevelProgress {
+  const safeXp = Number.isFinite(totalXp) && totalXp > 0 ? totalXp : 0;
+  const level = getPetLevel(safeXp);
+  const levelStartXp = PET_CONFIG.levelThresholds[level - 1] ?? 0;
+  const nextLevelXp = PET_CONFIG.levelThresholds[level] ?? null;
+
+  if (nextLevelXp === null) {
+    return {
+      level,
+      xpInLevel: Math.max(0, safeXp - levelStartXp),
+      xpForNextLevel: null,
+      percent: 100,
+    };
+  }
+
+  const span = Math.max(1, nextLevelXp - levelStartXp);
+  const xpInLevel = Math.max(0, safeXp - levelStartXp);
+  return {
+    level,
+    xpInLevel,
+    xpForNextLevel: nextLevelXp - safeXp,
+    percent: Math.min(100, Math.max(0, Math.round((xpInLevel / span) * 100))),
+  };
 }

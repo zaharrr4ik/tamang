@@ -28,6 +28,19 @@ export default {
           yellow: 'var(--app-yellow)',
           purple: 'var(--app-purple)',
           orange: 'var(--app-orange)',
+          panel: 'var(--app-panel)',
+          'panel-deep': 'var(--app-panel-deep)',
+          'panel-text': 'var(--app-panel-text)',
+          'panel-muted': 'var(--app-panel-muted)',
+          nav: 'var(--app-nav)',
+          'nav-active': 'var(--app-nav-active)',
+          'nav-active-text': 'var(--app-nav-active-text)',
+          'nav-text': 'var(--app-nav-text)',
+          'level-track': 'var(--app-level-track)',
+          'level-fill': 'var(--app-level-fill)',
+          'food-plate': 'var(--app-food-plate)',
+          'satiety-track': 'var(--app-satiety-track)',
+          'satiety-fill': 'var(--app-satiety-fill)',
         },
       },
       borderRadius: {
@@ -45,8 +58,8 @@ export default {
         'pixel-lg': 'var(--app-pixel-shadow-lg)',
       },
       fontFamily: {
-        app: ['"Pixelify Sans"', '"Press Start 2P"', 'ui-monospace', 'monospace'],
-        display: ['"Press Start 2P"', '"Pixelify Sans"', 'ui-monospace', 'monospace'],
+        app: ['"Pixelify Sans"', '"Jambilee"', 'ui-monospace', 'monospace'],
+        display: ['"Jambilee"', '"Pixelify Sans"', 'ui-monospace', 'monospace'],
       },
       keyframes: {
         float: {

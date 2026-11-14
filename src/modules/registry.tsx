@@ -4,6 +4,7 @@ import { LessonView } from '@/features/lesson/LessonView';
 import { MenuView } from '@/features/menu/MenuView';
 import { SettingsView } from '@/features/settings/SettingsView';
 import { ShopView } from '@/features/shop/ShopView';
+import { WardrobeView } from '@/features/wardrobe/WardrobeView';
 
 /**
  * Запись реестра вкладок нижней зоны.
@@ -15,14 +16,17 @@ export interface BottomTabEntry extends BottomTabModule {
 
 /**
  * Все вкладки до сортировки.
+ * Порядок задаёт `order`; `inNav: false` скрывает вкладку из полосы навигации
+ * (урок открывается кнопкой «На болото» в меню).
  * Чтобы добавить вкладку: расширь BottomTabId в src/types/index.ts,
  * создай модуль в src/features/<module>/ и добавь запись сюда.
  */
 const tabEntries: BottomTabEntry[] = [
-  { id: 'menu', title: 'Меню', emoji: '🏠', order: 0, Component: MenuView },
-  { id: 'lesson', title: 'Урок', emoji: '📖', order: 1, Component: LessonView },
-  { id: 'shop', title: 'Магазин', emoji: '🛍️', order: 2, Component: ShopView },
+  { id: 'menu', title: 'Главная', emoji: '🏠', order: 0, Component: MenuView },
+  { id: 'shop', title: 'Магазин', emoji: '🛍️', order: 1, Component: ShopView },
+  { id: 'wardrobe', title: 'Гардероб', emoji: '👑', order: 2, Component: WardrobeView },
   { id: 'settings', title: 'Настройки', emoji: '⚙️', order: 3, Component: SettingsView },
+  { id: 'lesson', title: 'Урок', emoji: '📖', order: 4, inNav: false, Component: LessonView },
 ];
 
 /** Реестр вкладок, отсортированный по order. */

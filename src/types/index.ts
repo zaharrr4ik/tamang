@@ -14,7 +14,7 @@ export type AppScreen = 'start' | 'main';
  * Идентификаторы вкладок динамической нижней зоны.
  * Чтобы добавить новую вкладку: расширь этот union, добавь модуль и запись в реестр вкладок.
  */
-export type BottomTabId = 'menu' | 'lesson' | 'shop' | 'settings';
+export type BottomTabId = 'menu' | 'lesson' | 'shop' | 'wardrobe' | 'settings';
 
 /** Состояние сессии урока. */
 export type LessonStatus = 'idle' | 'assembling' | 'correct' | 'wrong' | 'completed';
@@ -32,6 +32,8 @@ export type PetExpression = 'idle' | 'happy' | 'sad' | 'sleeping';
 export interface PetStats {
   health: number;
   mood: number;
+  /** Сытость: 0 — голоден, 100 — сыт. */
+  satiety: number;
 }
 
 /** Публичное состояние питомца (то, что хранится и персистится). */
@@ -46,6 +48,14 @@ export interface PetState {
   totalXp: number;
   /** Timestamp последнего взаимодействия (мс). */
   lastInteractionAt: number | null;
+  /** Монеты игрока. */
+  coins: number;
+  /** Запас еды (клубника), штук. */
+  food: number;
+  /** Серия заходов подряд: сколько дней подряд игрок заходил. */
+  streak: number;
+  /** Дата последнего захода в формате YYYY-MM-DD (локальная), для серии. */
+  lastVisitDate: string | null;
 }
 
 /** Слово-токен в банке слов урока. */
@@ -140,4 +150,9 @@ export interface BottomTabModule {
   /** Эмодзи-иконка (пока без сторонних иконочных библиотек). */
   emoji: string;
   order: number;
+  /**
+   * Показывать ли вкладку в полосе нижней навигации.
+   * `false` — экран доступен только программно (например, урок открывается кнопкой «На болото»).
+   */
+  inNav?: boolean;
 }

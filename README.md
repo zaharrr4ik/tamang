@@ -16,7 +16,7 @@
 
 `tamang-app` — Telegram Mini App на React: тамагочи, который помогает учить иностранные слова.
 Живой питомец «живёт» в верхней половине экрана, а нижняя половина — сменяемая рабочая зона
-(меню, урок, магазин, настройки). Прогресс и статы сохраняются в `localStorage` через Zustand
+(меню, урок, магазин, гардероб, настройки). Прогресс и статы сохраняются в `localStorage` через Zustand
 `persist`, поэтому перезапуск Mini App не сбрасывает игру.
 
 **Цель этого репозитория — фундамент, а не финальная игра.** Требования к каркасу:
@@ -31,19 +31,21 @@
 | Зона | Что есть |
 |---|---|
 | Старт | Пиксельная лягушка-«устройство» по центру; тап по ней (без единой надписи) → главный экран |
-| Верх главного экрана | LCD-экран с пиксельной лягушкой-питомцем, клик по питомцу, компактный HUD «УР.N / XP»; полоски Health/Mood и слой надетых предметов временно скрыты (`PetStats`/`PetOutfitSlot` сохранены) |
-| Низ главного экрана | Динамическая зона с реестром вкладок: Меню, Урок, Магазин, Настройки; меню — три чанки-кнопки без заголовка и описаний; кнопка «Назад» |
+| Верх главного экрана | Тёмная полоса устройства с HUD `PetHud`: уровень с зелёной заливкой по `getLevelProgress`, огонёк `streak`, монеты `coins`; под ней LCD-экран с питомцем (`PetStage`) и сканлайнами, клик и перетаскивание питомца; слой надетых предметов (`PetOutfitSlot`) временно скрыт |
+| Низ главного экрана | Тёмная панель меню (сытость, плашка еды, кнопка «На болото») и постоянная нижняя навигация `BottomNav`: Главная, Магазин, Гардероб, Настройки; вкладки берутся из `bottomTabRegistry`, «Урок» скрыт из навигации (`inNav: false`); кнопка «Назад» у внутренних вкладок |
 | Урок | Duolingo-стиль: реплика питомца, сборка ответа из слов, проверка, XP и mood за первое прохождение урока, прогресс уроков; всё в пиксельной рамке |
 | Магазин | Сетка товаров: надеть/снять для полученных, «скоро» и цена для остальных |
+| Гардероб | Отдельная вкладка: наряды и аксессуары без еды; надетые — «Снять», полученные — «Надеть», остальные — «Скоро» |
 | Настройки | Звук/вибрация/анимации (пиксельные переключатели), сбросы с inline-подтверждением, блок «О приложении» |
-| Стиль | Единая пиксельная система: 3px ink-рамки, жёсткие тени без размытия, `Press Start 2P` для заголовков/чисел, `Pixelify Sans` для текста, самоподключаемые (self-hosted) шрифты |
+| Стиль | Единая пиксельная система: 3px ink-рамки, жёсткие тени без размытия, `Jambilee` для заголовков/чисел (только латиница), `Pixelify Sans` для кириллицы и текста, self-hosted шрифты и PNG-иконки через `PixelIcon` |
 | Telegram | `TelegramProvider`, тема из `--tg-theme-*`, haptic, safe-area, fallback вне Telegram |
 | Заделы | `AudioService` (TTS/звуки) и `VoiceInputService` (STT) — интерфейсы есть, реализации no-op |
 
 Границы каркаса (важно понимать до изменений): нет сервера и авторизации, магазин не списывает
-валюту (нет валюты), переодевание на питомце пока не отображается — слой нарядов `PetOutfitSlot`
-временно скрыт, пиксельные наряды в следующей итерации; питомец анимирован пиксельными спрайтами
-(ходьба по полу, реакция на указатель, перенос пальцем), но скелетных анимаций и «комнаты» уровня
+валюту — монеты `coins` и еда `food` пока только отображаются в HUD и на главном экране;
+переодевание на питомце пока не отображается — слой нарядов `PetOutfitSlot` временно скрыт,
+пиксельные наряды в следующей итерации; питомец анимирован пиксельными спрайтами (блуждание
+по полу, реакция на указатель, перенос пальцем), но скелетных анимаций и «комнаты» уровня
 полноценного тамагочи нет; полоски Health/Mood временно скрыты; звука и голоса физически нет.
 Всё это — точки расширения, см. раздел 14.
 
@@ -161,12 +163,14 @@ pnpm 11 требует Node.js 22, а в `deploy.yml` стоял `node-version: 
 | Сборка | Vite | 5.4.11 + `@vitejs/plugin-react` 4.3.3 | dev-сервер, HMR, production-сборка |
 | Состояние | Zustand | 4.5.5 (+ `persist` из `zustand/middleware`) | 4 стора, селекторы, localStorage |
 | Стили | Tailwind CSS | 3.4.15 + PostCSS 8.4.49 + Autoprefixer 10.4.20 | utility-классы на семантических токенах |
-| Шрифты | Self-hosted `.woff2` | `Press Start 2P` + `Pixelify Sans` (кириллица + латиница) | пиксельная типографика без внешних CDN; `@font-face` в `src/index.css` |
+| Шрифты | Self-hosted `.woff2` | `Jambilee` (латиница) + `Pixelify Sans` (кириллица + латиница) | пиксельная типографика без внешних CDN; `@font-face` в `src/index.css` |
+| Иконки | Self-hosted PNG 64×64 + `PixelIcon` | `src/assets/icons/*.png` | пиксельные иконки без иконочных пакетов и эмодзи в UI |
 | Тема | CSS-переменные Telegram (`--tg-theme-*`) | — | нативный вид внутри Telegram |
 | Telegram | официальный SDK `telegram-web-app.js` | — | ready/expand/theme/haptic |
 
 Сознательные ограничения каркаса: **нет** UI-библиотек, иконочных пакетов, роутера, react-query,
-i18n-библиотек и тестового раннера. Всё это можно добавить только с согласования Lead (раздел 13).
+i18n-библиотек и тестового раннера. Иконки — только собственные PNG через `PixelIcon`, эмодзи в UI
+не используются. Всё это можно добавить только с согласования Lead (раздел 13).
 
 Псевдоним путей: `@/` → `src/` (настроен и в `vite.config.ts`, и в `tsconfig.json`).
 Импортировать принято так: `import { usePetStore } from '@/store';`, типы — `import type { Lesson } from '@/types';`.
@@ -199,7 +203,8 @@ tamang-app/
     ├── vite-env.d.ts           # ссылочные типы Vite
     ├── index.css               # @tailwind, @font-face (self-hosted), токены --app-*, пиксельные утилиты, анимации
     ├── assets/
-    │   ├── fonts/              # .woff2: Press Start 2P + Pixelify Sans (кириллица + латиница)
+    │   ├── fonts/              # .woff2: Jambilee (латиница/цифры) + Pixelify Sans (кириллица + латиница)
+    │   ├── icons/              # PNG 64×64, прозрачный фон: lily, chest, crown, compass, heart, coin, fire, strawberry, book
     │   ├── pet/                # спрайт-листы: idle 128×128, land 128×64, jump/fall/turn 64×64 (death/hurt не подключены)
     │   └── start-frog.png      # пиксельная лягушка-«устройство» старт-экрана
     ├── types/
@@ -221,32 +226,36 @@ tamang-app/
     ├── data/
     │   ├── lessons.ts          # 4 мок-урока Lesson[], LESSON_CORRECT_MOOD_GAIN=4, правила данных
     │   ├── shopItems.ts        # 7 мок-товаров ShopItem[], часть ownedByDefault: true
-    │   └── petConfig.ts        # PET_CONFIG + getPetLevel(totalXp): дефолты, эмодзи, clamp, гейны, пороги уровней
+    │   └── petConfig.ts        # PET_CONFIG (дефолты, satiety/coins/food, пороги) + getPetLevel() и getLevelProgress()
     ├── modules/
-    │   ├── registry.tsx        # реестр вкладок: bottomTabRegistry + getBottomTab(id), сортировка по order
+    │   ├── registry.tsx        # реестр вкладок: bottomTabRegistry + getBottomTab(id), сортировка по order, флаг inNav
     │   └── index.ts            # реэкспорт registry для '@/modules'
     ├── features/
-    │   ├── menu/MenuView.tsx       # меню: три чанки-кнопки (Урок / Магазин / Настройки) без описаний
+    │   ├── menu/MenuView.tsx       # главная: сытость, плашка еды, CTA «На болото» → openTab('lesson'); тёмная панель
     │   ├── lesson/LessonView.tsx   # урок Duolingo-стиля; «прослушать» и «голосом» — disabled «скоро»
     │   ├── shop/ShopView.tsx       # сетка товаров, надеть/снять, «скоро» для недоступных
+    │   ├── wardrobe/WardrobeView.tsx # гардероб: наряды и аксессуары, «Надеть»/«Снять»/«Скоро»
     │   └── settings/SettingsView.tsx # переключатели, сбросы (через локальный UI-стейт), «О приложении»
     └── components/
-        ├── RootScreen.tsx      # читает uiStore.screen → StartScreen | MainScreen; синхронизирует audioService
+        ├── RootScreen.tsx      # читает uiStore.screen → StartScreen | MainScreen; registerVisit() один раз; синхронизирует audioService
         ├── StartScreen.tsx     # пиксельная лягушка-«устройство» по центру: тап (без текста) → uiStore.start()
         ├── MainScreen.tsx      # каркас главного экрана: PetHalf + BottomHalf
         ├── BackButton.tsx      # пиксельная кнопка «← Назад» при bottomTab !== 'menu' → uiStore.backToMenu()
-        ├── BottomHalf.tsx      # динамическая зона: шапка (BackButton + название) + компонент из реестра
+        ├── BottomHalf.tsx      # низ: тёмная панель для menu без скролла; для остальных — шапка (BackButton + название) + скролл; BottomNav всегда
+        ├── BottomNav.tsx       # постоянная тёмная навигация: вкладки из bottomTabRegistry с inNav !== false, PixelIcon, активная плашка
         ├── hooks/
         │   └── useUiFeedback.ts # playSound(SoundId) / vibrate(type) с учётом settingsStore; единая точка отклика
         ├── ui/
         │   ├── PixelButton.tsx  # единая пиксельная кнопка: tone green/blue/cream/yellow, size md/sm, min-h 52/40px
-        │   └── PixelPanel.tsx   # пиксельная панель: tone card/screen/cream → .pixel-frame + фон
+        │   ├── PixelPanel.tsx   # пиксельная панель: tone card/screen/cream → .pixel-frame + фон
+        │   └── PixelIcon.tsx    # пиксельная PNG-иконка: name: PixelIconName, alt="" aria-hidden, image-rendering: pixelated
         └── pet/
-            ├── PetHalf.tsx         # верхняя половина: LCD-экран (.pixel-screen) + PetStage + HUD «УР.N / XP» (слой нарядов скрыт)
-            ├── PetStage.tsx        # сцена: пол, тень, лягушка (ходьба/клик/drag), пиксельные сердца; rAF без ре-рендеров
+            ├── PetHalf.tsx         # верхняя половина: тёмная полоса с PetHud + LCD (.pixel-screen) с PetStage и сканлайнами
+            ├── PetHud.tsx          # HUD устройства: плашки уровня (заливка по getLevelProgress), streak и coins
+            ├── PetStage.tsx        # сцена: пол, тень, лягушка (блуждание/клик/drag), пиксельные сердца; rAF без ре-рендеров
             ├── petSprites.ts       # метаданные спрайт-листов + getFrogFrameStyle(): кадр 64×64, обрезка и масштаб ×4
             ├── FrogSprite.tsx      # один кадр лягушки (.sprite-frame.pixelated, зеркалирование по facing)
-            ├── useFrogWalk.ts      # хук движения: walk/held/lifted/hop/falling/landing, перенос указателем, тап
+            ├── useFrogWalk.ts      # хук движения: блуждание к цели, walk/held/lifted/hop/falling/landing, перенос указателем, тап
             ├── PixelHeart.tsx      # пиксельное сердце 20×20 из маски 5×5 (цвета из токенов)
             ├── PetStats.tsx        # Health / Mood: полоски и числа; временно не рендерится (скрыт в UI)
             └── PetOutfitSlot.tsx   # слой нарядов: сейчас не рендерится (эмодзи-заглушки убраны; файл под пиксельные наряды)
@@ -254,8 +263,8 @@ tamang-app/
 
 Композиция UI: `App` → `TelegramProvider` → `RootScreen` → (`StartScreen` | `MainScreen`).
 `MainScreen` = `PetHalf` (постоянный верх) + `BottomHalf` (низ по `uiStore.bottomTab`).
-`PetHalf` = LCD-экран: `PetStage` + сканлайны + HUD «УР.N / XP»
-(`PetStats` и слой нарядов `PetOutfitSlot` временно не рендерятся). Все переиспользуемые кнопки/панели — из `src/components/ui/`.
+`PetHalf` = тёмная полоса с `PetHud` + LCD-экран: `PetStage` + сканлайны
+(`PetStats` и слой нарядов `PetOutfitSlot` временно не рендерятся). Все переиспользуемые кнопки/панели/иконки — из `src/components/ui/`.
 
 Папки `node_modules/` и `dist/` в дереве не перечислены: это артефакты установки и сборки.
 Если файл из дерева отсутствует на диске — это расхождение; проверяй `glob`/`read`, а не доверяй
@@ -297,30 +306,35 @@ return screen === 'start' ? <StartScreen /> : <MainScreen />;
 `MainScreen` — вертикальный flex на всю высоту: пиксельный «корпус тамагочи» с LCD-экраном сверху
 и панелью вкладок снизу.
 
-- **верх (`PetHalf`)** — постоянная зона `h-[50%] min-h-[240px] shrink-0`: мятный LCD-экран
-  (`.pixel-screen`) со сценой питомца, сканлайнами и компактным HUD «УР.N / XP» в углу
-  (слой надетых предметов `PetOutfitSlot` временно скрыт). Она не читает `uiStore.bottomTab` и не
-  перемонтируется при смене вкладки — состояние питомца (и его анимации) не теряется.
-  Полоски Health/Mood временно **не рендерятся** (`PetStats` сохранён в коде для следующей итерации);
+- **верх (`PetHalf`)** — постоянная зона `h-[58%] min-h-[240px] shrink-0`: сверху тёмная полоса
+  устройства `bg-app-panel` с `PetHud` (три плашки `.pixel-plate`: уровень с заливкой по
+  `getLevelProgress`, огонёк `streak`, монеты `coins`), под ней мятный LCD-экран (`.pixel-screen`)
+  со сценой питомца и сканлайнами (слой надетых предметов `PetOutfitSlot` временно скрыт). Она не
+  читает `uiStore.bottomTab` и не перемонтируется при смене вкладки — состояние питомца (и его
+  анимации) не теряется. Полоски Health/Mood временно **не рендерятся** (`PetStats` сохранён в
+  коде для следующей итерации);
 - **низ (`BottomHalf`)** — `flex-1 min-h-0` + жёсткая верхняя граница `border-t-3 border-app-ink`:
-  занимает остаток высоты. Для меню скролла нет (`overflow-hidden`, три кнопки обязаны влезть);
-  для остальных вкладок — `overflow-y-auto` с учётом safe-area. Внутри — шапка (`BackButton` +
-  название вкладки, если вкладка не `menu`) и компонент из реестра по `bottomTab`.
+  занимает остаток высоты. Для меню (`bottomTab === 'menu'`) — тёмная панель `bg-app-panel`
+  без скролла; для остальных вкладок — шапка (`BackButton` + название) и `overflow-y-auto`
+  с учётом safe-area. Внизу **всегда** рендерится `BottomNav` (тёмная полоса `bg-app-nav`).
 
 ```text
 MainScreen
 ├── PetHalf                       ← не меняется при смене вкладки
-│   ├── PetStage (спрайт-лягушка, тап/клик)
+│   ├── PetHud (тёмная полоса: уровень + streak + coins)
+│   ├── PetStage (спрайт-лягушка, тап/клик/перетаскивание)
 │   ├── (PetOutfitSlot — скрыт до появления пиксельных нарядов)
 │   ├── .lcd-scanlines (декор поверх сцены)
-│   └── HUD: «УР.N» + «XP» (PetStats временно скрыт)
+│   └── PetStats временно скрыт
 └── BottomHalf                    ← меняется при смене вкладки
     ├── шапка: BackButton + название вкладки (если bottomTab !== 'menu')
-    └── <Component из bottomTabRegistry по uiStore.bottomTab>
-        ├── MenuView → openTab('lesson' | 'shop' | 'settings')  (без скролла)
-        ├── LessonView                                             (overflow-y-auto)
-        ├── ShopView                                               (overflow-y-auto)
-        └── SettingsView                                           (overflow-y-auto)
+    ├── <Component из bottomTabRegistry по uiStore.bottomTab>
+    │   ├── MenuView → openTab('lesson')  (тёмная панель без скролла)
+    │   ├── LessonView                                             (overflow-y-auto)
+    │   ├── ShopView                                               (overflow-y-auto)
+    │   ├── WardrobeView                                           (overflow-y-auto)
+    │   └── SettingsView                                           (overflow-y-auto)
+    └── BottomNav (постоянно; вкладки из bottomTabRegistry, inNav !== false)
 ```
 
 Внутри `LessonView` три состояния (это один и тот же компонент, а не отдельные экраны):
@@ -338,7 +352,7 @@ MainScreen
 | Что | Где | Переживает перезапуск |
 |---|---|---|
 | Текущий экран, активная вкладка | `uiStore` | нет |
-| Имя, статы, выражение, одежда, XP питомца | `petStore` | да (кроме `expression`) |
+| Имя, статы (health/mood/satiety), выражение, одежда, XP, coins, food, streak, lastVisitDate | `petStore` | да (кроме `expression`) |
 | Сессия урока (текущий урок, выбранные слова, статус, попытки) | `lessonStore` | нет |
 | Пройденные уроки | `lessonStore.completedLessonIds` | да |
 | Настройки (звук/вибрация/анимации) | `settingsStore` | да |
@@ -363,6 +377,7 @@ export const PET_STORE_KEY = 'tamang.pet';
 interface PetStoreState extends PetState {
   addXp(amount: number): void;
   petClick(): void;
+  registerVisit(): void;
   applyStatDelta(delta: Partial<PetStats>): void;
   setExpression(expression: PetExpression): void;
   equipItem(itemId: string): void;
@@ -372,19 +387,29 @@ interface PetStoreState extends PetState {
 }
 ```
 
-- Начальные значения — из `PET_CONFIG` (`src/data/petConfig.ts`): имя `«Таманг»`, статы `100/100`.
-- `persist` хранит: `name`, `stats`, `equippedItemIds`, `totalXp`, `lastInteractionAt`.
+- Начальные значения — из `PET_CONFIG` (`src/data/petConfig.ts`): имя `«Таманг»`,
+  `stats = { health: 100, mood: 100, satiety: 60 }`, `coins = 120`, `food = 2`, `streak = 1`.
+- `persist` (ключ `PET_STORE_KEY`, **version 2**) хранит: `name`, `stats`, `equippedItemIds`,
+  `totalXp`, `lastInteractionAt`, `coins`, `food`, `streak`, `lastVisitDate`.
   `expression` **не** персистится (при загрузке — `'idle'`).
-- `petClick()`: `mood +4`, `health +1` с ограничением `0..100`, `expression = 'happy'`,
-  `lastInteractionAt = Date.now()`, через `~1200 мс` (значение в `PET_CONFIG.reactionTimeoutMs`)
-  выражение возвращается в `'idle'`.
+- Миграция: `migratePersistedState(persisted)` терпимо читает старый снапшот v1 (в нём нет
+  `satiety`/`coins`/`food`/`streak`/`lastVisitDate`) и добивает поля дефолтами через
+  `normalizeStat`/`normalizeCount`; `DEFAULT_PERSISTED_STATE` — база для этих дефолтов.
+- `registerVisit()` вызывает `RootScreen` **один раз** при старте. Считает локальную дату
+  (`getLocalDateKey`, формат `YYYY-MM-DD`): если `lastVisitDate` уже сегодня — ничего не меняется;
+  если это вчера — `streak + 1`; иначе `streak = 1`. В тот же день повторный вызов идемпотентен.
+- `petClick()`: `mood +4`, `health +1` с ограничением `0..100`, `satiety` не меняется,
+  `expression = 'happy'`, `lastInteractionAt = Date.now()`, через `~1200 мс`
+  (значение в `PET_CONFIG.reactionTimeoutMs`) выражение возвращается в `'idle'`.
 - `addXp(amount)` увеличивает `totalXp` (принимает только положительное конечное число);
   `applyStatDelta` меняет статы с clamp; `equipItem`/`unequipItem` — массив `equippedItemIds`
   (без дублей); `renamePet` обрезает пробелы, ограничивает имя 24 символами и игнорирует пустое;
-  `resetPet` — к дефолтам из `PET_CONFIG`.
-- Уровень питомца не хранится в сторе: он вычисляется из `totalXp` функцией
-  `getPetLevel(totalXp)` (`src/data/petConfig.ts`) по порогам `PET_CONFIG.levelThresholds`
-  (уровень 1 при 0 XP, 2 при 50 XP, 3 при 120 XP и т.д.).
+  `resetPet` — к дефолтам из `PET_CONFIG` (включая `coins`, `food`, `streak`, `lastVisitDate`).
+- Уровень питомца не хранится в сторе: он вычисляется из `totalXp` функциями
+  `getPetLevel(totalXp)` (номер уровня) и `getLevelProgress(totalXp)` (`src/data/petConfig.ts`) по
+  порогам `PET_CONFIG.levelThresholds` (уровень 1 при 0 XP, 2 при 50 XP, 3 при 120 XP и т.д.).
+  `LevelProgress = { level, xpInLevel, xpForNextLevel: number | null, percent }`; на максимальном
+  уровне `percent === 100`, а `xpForNextLevel === null` — именно `percent` рисует заливку в `PetHud`.
 - Стор **сам не вызывает `audioService`**: звук — ответственность UI (клик, награда и т.п.).
 
 ### 6.2. `uiStore` — навигация
@@ -392,7 +417,7 @@ interface PetStoreState extends PetState {
 ```ts
 interface UiStoreState {
   screen: AppScreen;      // 'start' | 'main', старт: 'start'
-  bottomTab: BottomTabId; // 'menu' | 'lesson' | 'shop' | 'settings', старт: 'menu'
+  bottomTab: BottomTabId; // 'menu' | 'lesson' | 'shop' | 'wardrobe' | 'settings', старт: 'menu'
   setScreen(screen: AppScreen): void;
   start(): void;          // screen → 'main', bottomTab → 'menu'
   openTab(tab: BottomTabId): void;
@@ -477,7 +502,8 @@ Persist-ключ `'tamang.settings'`. Настройки читаются точ
    `usePetStore.setState(...)` из компонентов. Нужен новый сценарий — добавь экшен в стор.
 3. **Сторы не импортируют UI и не рисуют.** Доменная логика — в сторе, звук/haptic/анимации — в UI.
 4. **Persist-ключи и имена персистируемых полей не менять** без миграции: иначе у пользователей
-   пропадёт прогресс (`localStorage` хранит данные по этим ключам).
+   пропадёт прогресс (`localStorage` хранит данные по этим ключам). Меняешь форму снапшота —
+   поднимай `version` в `persist(...)` и добавляй `migrate` (образец — `petStore`, version 2).
 5. **Сбросы** — только через публичные `resetPet()`, `resetProgress()`, `resetSettings()`.
 6. **Ключи `localStorage`:** `tamang.pet`, `tamang.lesson-progress`, `tamang.settings`.
    В коде это `PET_STORE_KEY`, `LESSON_STORE_KEY`, `SETTINGS_STORE_KEY` из `@/store`.
@@ -497,9 +523,9 @@ Persist-ключ `'tamang.settings'`. Настройки читаются точ
 
 ```ts
 // было
-export type BottomTabId = 'menu' | 'lesson' | 'shop' | 'settings';
+export type BottomTabId = 'menu' | 'lesson' | 'shop' | 'wardrobe' | 'settings';
 // станет
-export type BottomTabId = 'menu' | 'lesson' | 'shop' | 'settings' | 'garden';
+export type BottomTabId = 'menu' | 'lesson' | 'shop' | 'wardrobe' | 'settings' | 'garden';
 ```
 
 Без этого шага TypeScript не даст создать запись в реестре и открыть вкладку.
@@ -541,7 +567,7 @@ export function GardenView() {
 ```
 
 Правила: только токены (`text-app-text`, `bg-app-card`, ...), кнопки/панели — из
-`@/components/ui` (`PixelButton`/`PixelPanel`) или классы `.pixel-btn`/`.pixel-frame`, никаких
+`@/components/ui` (`PixelButton`/`PixelPanel`/`PixelIcon`) или классы `.pixel-btn`/`.pixel-frame`, никаких
 `alert/confirm`, никаких импортов из других `src/features/*`. Данные — через `@/store` и `@/data`;
 отклик (звук/вибрация) — через `@/components/hooks/useUiFeedback`; haptic-подробности — через
 `@/lib/telegram`.
@@ -553,13 +579,14 @@ export function GardenView() {
 ```tsx
 import { GardenView } from '@/features/garden/GardenView';
 
-// ... внутри массива bottomTabRegistry, рядом с menu/lesson/shop/settings:
+// ... внутри массива tabEntries, рядом с menu/shop/wardrobe/settings/lesson:
 {
   id: 'garden',
   title: 'Сад',
   emoji: '🌱',
-  order: 4, // больше, чем у существующих вкладок; реестр сортирует по order
+  order: 5, // больше, чем у существующих вкладок; реестр сортирует по order
   Component: GardenView,
+  // inNav: false, // необязательно: скрыть вкладку из BottomNav (как у lesson)
 },
 ```
 
@@ -573,29 +600,39 @@ export const bottomTabRegistry: BottomTabEntry[]; // отсортирован п
 export function getBottomTab(id: BottomTabId): BottomTabEntry;
 ```
 
-### Шаг 4. Добавить пункт в меню
+### Шаг 4. Иконка в нижней навигации (только для вкладок в `BottomNav`)
 
-`MenuView` (`src/features/menu/MenuView.tsx`) рендерит список `MENU_ACTIONS` и уже содержит
-обработчик `openTab` со звуком/вибрацией. Добавь в массив `MENU_ACTIONS` ещё один объект — и всё:
+Если вкладка должна быть видна в нижней полосе, добавь её иконку в `NAV_ICONS`
+(`src/components/BottomNav.tsx`):
 
 ```tsx
-// src/features/menu/MenuView.tsx, в массив MENU_ACTIONS
-{
-  tab: 'garden',
-  title: 'Сад',
-  tone: 'green', // 'green' | 'blue' | 'cream' | 'yellow' — тон PixelButton
-},
+const NAV_ICONS: Record<BottomTabId, PixelIconName> = {
+  menu: 'lily',
+  lesson: 'book',
+  shop: 'chest',
+  wardrobe: 'crown',
+  settings: 'compass',
+  garden: 'strawberry', // новая иконка из src/assets/icons/
+};
 ```
 
-`BottomHalf` сам отрисует `GardenView` по `uiStore.bottomTab` и покажет кнопку «Назад»
-(она появляется для любой вкладки, кроме `menu`). Никаких правок в `MainScreen`, `PetHalf`,
-`BottomHalf` и `App.tsx` не требуется.
+`BottomNav` рендерит только вкладки с `tab.inNav !== false` и берёт подпись из `title` записи
+реестра. Хочешь вкладку без кнопки в навигации (как «Урок») — поставь `inNav: false` в записи
+реестра и пропусти этот шаг; на экран тогда попадают только через `uiStore.openTab('garden')`
+(например, из `MenuView`). Список допустимых имён — `PixelIconName` в
+`src/components/ui/PixelIcon.tsx`; новые иконки кладутся в `src/assets/icons/` (PNG 64×64,
+прозрачный фон, `image-rendering: pixelated`).
+
+Никаких правок в `MainScreen`, `PetHalf`, `BottomHalf` и `App.tsx` не требуется: `BottomHalf`
+сам отрисует `GardenView` по `uiStore.bottomTab` и покажет кнопку «Назад» (она появляется для
+любой вкладки, кроме `menu`).
 
 ### Чек-лист после добавления
 
 - `run-pnpm.cmd typecheck` → 0 ошибок;
 - `run-pnpm.cmd build` → успех;
-- вкладка открывается из меню, «Назад» работает, верхняя половина не мигает и не сбрасывается;
+- вкладка открывается, «Назад» работает, верхняя половина не мигает и не сбрасывается;
+- вкладка есть в `BottomNav` (если нужна) и корректно подсвечивается как активная;
 - в README обновлено дерево (`src/features/garden/GardenView.tsx`).
 
 ---
@@ -692,7 +729,9 @@ interface WordToken {
 ```ts
 export interface PetConfig {
   defaultName: string;          // 'Таманг'
-  defaultStats: PetStats;       // { health: 100, mood: 100 }
+  defaultStats: PetStats;       // { health: 100, mood: 100, satiety: 60 }
+  defaultCoins: number;         // 120
+  defaultFood: number;          // 2
   expressions: Record<PetExpression, string>; // эмодзи: idle/happy/sad/sleeping
   maxStat: number;              // 100
   minStat: number;              // 0
@@ -704,13 +743,21 @@ export interface PetConfig {
 
 export const PET_CONFIG: PetConfig;
 export function getPetLevel(totalXp: number): number; // 1 при 0 XP, 2 при 50 XP, ...
+
+export interface LevelProgress {
+  level: number;
+  xpInLevel: number;
+  xpForNextLevel: number | null; // null на максимальном уровне
+  percent: number;               // 0..100 — заливка плашки уровня в PetHud
+}
+export function getLevelProgress(totalXp: number): LevelProgress;
 ```
 
-Здесь меняются: имя по умолчанию, стартовые статы, эмодзи выражений, границы шкал (clamp),
-бонусы за клик, задержка возврата выражения в `idle` и пороги уровней. Пороги уровней —
-только данные: `getPetLevel` читает `PET_CONFIG.levelThresholds`, поэтому новый уровень
-добавляется одним числом. Менять `PET_CONFIG` безопасно: стор читает его при инициализации
-и в `resetPet()`, а UI — при отрисовке.
+Здесь меняются: имя по умолчанию, стартовые статы (включая `satiety`), стартовые `coins`/`food`,
+эмодзи выражений, границы шкал (clamp), бонусы за клик, задержка возврата выражения в `idle`
+и пороги уровней. Пороги уровней — только данные: `getPetLevel` и `getLevelProgress` читают
+`PET_CONFIG.levelThresholds`, поэтому новый уровень добавляется одним числом. Менять `PET_CONFIG`
+безопасно: стор читает его при инициализации и в `resetPet()`, а UI — при отрисовке.
 
 ### 9.2. Публичное API `petStore`
 
@@ -719,6 +766,7 @@ export function getPetLevel(totalXp: number): number; // 1 при 0 XP, 2 при
 | `petClick()` | `mood + clickMoodGain`, `health + clickHealthGain` (clamp), `expression='happy'`, `lastInteractionAt=now`, возврат в `'idle'` через `reactionTimeoutMs` |
 | `addXp(amount)` | увеличить `totalXp` |
 | `applyStatDelta(delta: Partial<PetStats>)` | изменить статы на дельту с ограничением `minStat..maxStat` |
+| `registerVisit()` | визит дня: `lastVisitDate` + `streak` (та же дата — без изменений, вчера — `+1`, иначе `1`); вызывается один раз из `RootScreen` |
 | `setExpression(expression)` | принудительно задать выражение (например, `'sad'` на ошибке) |
 | `equipItem(itemId)` / `unequipItem(itemId)` | надеть/снять предмет (id из `shopItems`) |
 | `renamePet(name)` | переименовать питомца |
@@ -742,8 +790,12 @@ export function getPetLevel(totalXp: number): number; // 1 при 0 XP, 2 при
     `FROG_SCALE = 4` → элемент 112×64 px, `getFrogFrameStyle(sheet, frame, scale = FROG_SCALE)`
     режет кадр через `background-position`;
   - `FrogSprite` — один кадр (`.sprite-frame.pixelated`), зеркалится через `scaleX(-1)` по `facing`;
-  - `useFrogWalk` — движение: ходьба циклом idle-кадров по 200 мс (≈5 fps, 22–34 px/s)
-    с лёгким покачиванием корпуса (±2 px); пауза `turn` 170 мс на развороте у края;
+  - `useFrogWalk` — **блуждание к случайной цели**, а не пинг-понг по чек-линии: X цели — 8–92%
+    ширины сцены (с поправкой на половину спрайта), базовая линия плавает от горизонта
+    (`stageHeight - floorHeight`) до `stageHeight - 6`; скорости X 10–16 px/s, Y 7–12 px/s;
+    пауза после прихода 1500–6500 мс (в 70% случаев 2–4 с); 70% целей — в средней трети области;
+    новая цель не ближе 40 px по X и 16 px по Y (до 12 попыток); если цель сзади (`|dx| ≥ 8`) —
+    разворот на месте с паузой `turn` 170 мс; покачивание корпуса ±2 px на каждые 16 px пути.
     hover-подскок (`jump`, не чаще 2.2 с). `pointerdown` из `walk` **или `hop`** → `held`
     (клик во время ховер-подскока не проглатывается как «падение»), отпускание без переноса —
     **всегда тап** (`onTap`, высота подъёма не важна). Режим `falling` → `landing` (300 мс)
@@ -751,12 +803,19 @@ export function getPetLevel(totalXp: number): number; // 1 при 0 XP, 2 при
     rAF пишет `transform` напрямую в DOM — анимация не вызывает ре-рендеров React.
     При `animationsEnabled = false` лягушка стоит на idle-кадре, движение и частицы отключены,
     но тап и перенос работают;
-  - `PetStage` — сцена: `.pixel-floor` высотой `max(56, 28% высоты)`, пиксельная тень-полоска,
-    лягушка с `role="button"` (Enter/Space), 2–4 пиксельных сердца на тап
-    (`animate-pet-rise`, 1000 мс, задержка 70 мс), `animate-pixel-pop` на тап и
+  - `PetStage` — сцена: `.pixel-floor` высотой `max(64, 34% высоты сцены)` (`MIN_FLOOR_HEIGHT = 64`,
+    `FLOOR_HEIGHT_RATIO = 0.34`), пиксельная тень-полоска, лягушка с `role="button"`
+    (Enter/Space) и позиционированием по `baselineY` (низ элемента = линия лап), 2–4 пиксельных
+    сердца на тап (`animate-pet-rise`, 1000 мс, задержка 70 мс), `animate-pixel-pop` на тап и
     `animate-hop-squash` на приземление. `death.png`/`hurt.png` лежат в assets, но пока не подключены.
+- HUD питомца — `PetHud` (`src/components/pet/PetHud.tsx`): тёмная полоса `bg-app-panel` с тремя
+  плашками `.pixel-plate`. Уровень (`getLevelProgress(totalXp).percent` → заливка
+  `bg-app-level-fill` по треку `bg-app-level-track`, подпись `Ур. N`), огонёк `streak`
+  (`PixelIcon name="fire"`) и монеты `coins` (`PixelIcon name="coin"`). HUD не читает `bottomTab`
+  и не перемонтируется при смене вкладки.
 - Надеть/снять можно только то, что есть у игрока: в магазине предметы с `ownedByDefault: true`
-  доступны сразу, остальные показывают «скоро». Покупка не реализована (нет валюты).
+  доступны сразу, остальные показывают «скоро». Покупка не реализована: `coins` и `food` пока
+  только отображаются в HUD и на главном экране.
 - Чтобы добавить предмет: добавь запись в `shopItems` (`ShopItem`: `id`, `title`, `description`,
   `emoji`, `price`, `category`, `ownedByDefault?`) и, если нужен внешний вид, отрисовку по `id`
   в `PetOutfitSlot`, когда слой вернут в `PetHalf` (сейчас скрыт, см. §14). Стор менять не нужно —
@@ -770,15 +829,17 @@ export function getPetLevel(totalXp: number): number; // 1 при 0 XP, 2 при
 ### 9.4. Новая стата питомца
 
 Это **изменение контракта**: `PetStats` живёт в `src/types/index.ts` (правит Lead), плюс нужна
-новая дельта в `PET_CONFIG.defaultStats` и обработка в `petStore`/UI. Порядок:
+новая дельта в `PET_CONFIG.defaultStats` и обработка в `petStore`/UI. Образец уже сделанного —
+`satiety` (шкала «Сытость» на главном экране). Порядок:
 
-1. согласовать с Lead поле (например, `satiety: number`), Lead правит `PetStats`;
+1. согласовать с Lead поле (например, `energy: number`), Lead правит `PetStats`;
 2. `PET_CONFIG.defaultStats` — стартовое значение; `applyStatDelta` уже работает с
    `Partial<PetStats>`, clamp берётся из `PET_CONFIG`;
 3. `PetStats`-компонент — новая полоска/число;
-4. учесть старые сохранения: у пользователей в `localStorage` нет нового поля — стор/компонент
-   должны переживать `undefined` (например, `satiety ?? PET_CONFIG.defaultStats.satiety`).
-   Если нужна полноценная миграция — согласуй с Lead и используй `persist`-опции `version`/`migrate`.
+4. старые сохранения: подними `version` в `persist(...)` `petStore` и дополни
+   `migratePersistedState` нормализацией нового поля (`normalizeStat`), как это сделано для
+   `satiety`/`coins`/`food` при переходе на version 2. Пользователь не должен увидеть `undefined`.
+   Дефолты для таких полей держи в `DEFAULT_PERSISTED_STATE`, а не в компонентах.
 
 Не добавляй новые статы «локально в компоненте»: они должны жить в `petStore`, иначе не
 сохранятся и не будут доступны другим модулям.
@@ -808,8 +869,10 @@ pixel-frame, pixel-screen, pixel-btn, pixel-chip, lcd-scanlines, retro-room-bg, 
   тень исчезает);
 - никаких градиентов на кнопках, размытых теней (`blur-*`, `shadow-md/lg`), скруглений 20px+,
   glassmorphism и «мягких» карточек;
-- шрифты: `font-display` (Press Start 2P) — заголовки, числа, лейблы, XP; `font-app`
-  (Pixelify Sans) — тело текста и длинные кнопки;
+- шрифты: `font-display` (Jambilee, **только латиница**) — короткие заголовки, числа, лейблы, XP;
+  `font-app` (Pixelify Sans) — тело текста, кириллица и длинные кнопки;
+- иконки — только PNG через `PixelIcon` (`src/assets/icons/`), эмодзи и иконочные пакеты в UI
+  не используются;
 - весь интерфейсный текст — по-русски (английский остаётся только в демо-словах уроков).
 
 ### 10.1. Шрифты (self-hosted)
@@ -819,16 +882,23 @@ pixel-frame, pixel-screen, pixel-btn, pixel-chip, lcd-scanlines, retro-room-bg, 
 
 | Семейство | Tailwind-класс | Где использовать | Файлы |
 |---|---|---|---|
-| `Press Start 2P` | `font-display` | заголовки, лейблы, числа, XP, «УР.N», счётчики | `press-start-2p-400-{cyrillic,latin}.woff2` |
-| `Pixelify Sans` | `font-app` | тело, описания, длинные кнопки, подписи | `pixelify-sans-{cyrillic,latin}.woff2` |
+| `Jambilee` | `font-display` | короткие заголовки, лейблы, числа, «Ур. N», счётчики — только латиница, цифры и базовая пунктуация | `jambilee.woff2` |
+| `Pixelify Sans` | `font-app` (и `body`) | тело, описания, длинные кнопки, подписи, **вся кириллица** | `pixelify-sans-{cyrillic,latin}.woff2` |
+
+Стеки в `tailwind.config.js`: `font-display = 'Jambilee', 'Pixelify Sans'`, `font-app` (и
+`font-family` у `body`) = `'Pixelify Sans', 'Jambilee'`.
 
 Правила типографики:
 
 - **никаких внешних шрифтовых CDN** (Google Fonts и т.п.) — только локальные `.woff2`; иначе
   Telegram WebView без сети останется без пиксельного шрифта, а сборка получит лишнюю зависимость;
-- Press Start 2P очень широкий, особенно в кириллице: держи размеры **7–12px**
-  (`text-[8px]`, `text-[10px]`, `text-xs`), для многострочного текста — `leading-relaxed`,
-  длинные русские фразы в нём не набирай;
+- **в Jambilee нет кириллицы** — русский текст в `font-display` автоматически падает на
+  `Pixelify Sans` из стека. Поэтому не полагайся на Jambilee для русских заголовков: ширина и
+  рисунок букв будут другими. Русские заголовки либо набирай `font-app`, либо сознательно
+  оставляй фолбэк;
+- Jambilee рассчитан на короткие строки: подписи и лейблы 9–11px (`text-[10px]`, `font-display`),
+  числа HUD 12–13px, крупный CTA — до 20px. Для многострочного текста — `leading-relaxed`,
+  длинные русские фразы в `font-display` не набирай;
 - `font-display` не применяй к абзацам — только к коротким акцентам и числам.
 
 ### 10.2. Токены `--app-*` (`:root` / `html.dark`)
@@ -851,6 +921,17 @@ pixel-frame, pixel-screen, pixel-btn, pixel-chip, lcd-scanlines, retro-room-bg, 
 | `--app-yellow` | жёлтый CTA/XP | `#ffc800` | `#ffc800` |
 | `--app-purple` / `--app-orange` | акценты (магазин/бейджи) | `#ce82ff` / `#ff9600` | те же |
 | `--app-success` / `--app-danger` | успех / ошибка | `#58cc02` / `#ff4b4b` | те же |
+| `--app-panel` | тёмная панель «устройства» (HUD, меню) | `#1d4241` | тот же |
+| `--app-panel-deep` | глубина и рамка плашек на панели | `#12312c` | тот же |
+| `--app-panel-text` | основной текст на тёмной панели | `#e9f6e3` | тот же |
+| `--app-panel-muted` | вторичный текст на панели | `#b9d6c4` | тот же |
+| `--app-nav` | фон нижней навигации `BottomNav` | `#27421d` | тот же |
+| `--app-nav-active` | заливка активной вкладки | `#a8e06f` | тот же |
+| `--app-nav-active-text` | текст/иконка активной вкладки | `#16340f` | тот же |
+| `--app-nav-text` | текст неактивных вкладок | `#cfdcc4` | тот же |
+| `--app-level-track` / `--app-level-fill` | трек и заливка уровня в `PetHud` | `#1f3f40` / `#82e973` | те же |
+| `--app-food-plate` | плашка еды на главном экране | `#182827` | тот же |
+| `--app-satiety-track` / `--app-satiety-fill` | шкала «Сытость» на главном | `#ccebd7` / `#6f9677` | те же |
 | `--app-screen` | мятный LCD-экран | `#e8f5e9` | `#e8f5e9` |
 | `--app-screen-deep` | глубина LCD (inset) | `#cfe9d3` | `#cfe9d3` |
 | `--app-floor` / `--app-floor-line` | пол сцены и линии решётки | `#bfe0c4` / `#8ecb9a` | те же |
@@ -862,9 +943,13 @@ pixel-frame, pixel-screen, pixel-btn, pixel-chip, lcd-scanlines, retro-room-bg, 
 | `--app-safe-top` / `--app-safe-bottom` | safe-area (через `env()`) | — | — |
 
 **Важно про тёмную тему.** LCD-экран остаётся мятным и светлым в обеих темах, а `--app-ink` в
-тёмной теме — почти чёрный (`#0b0e12`). Поэтому:
+тёмной теме — почти чёрный (`#0b0e12`). Токены `--app-panel*`, `--app-nav*`, `--app-level-*`,
+`--app-food-plate` и `--app-satiety-*` — **фиксированно тёмные/светлые в обеих темах** (это
+«корпус устройства», а не поверхность темы), значения в `:root` и `html.dark` совпадают. Поэтому:
 
 - текст/иконки **внутри** сцены и на мятных подложках — `text-app-ink`;
+- текст на тёмной панели — `text-app-panel-text` / `text-app-panel-muted`, на навигации —
+  `text-app-nav-text` / `text-app-nav-active-text`;
 - текст/иконки на карточках (`bg-app-card`, `bg-app-accent-soft` и т.п.) — `text-app-text`,
   а не `text-app-ink`: в тёмной теме чёрный текст на тёмной карточке не читается;
 - жёсткие тени/рамки в тёмной теме остаются тёмными — это дизайн-решение (пиксельный «ink»),
@@ -888,6 +973,7 @@ pixel-frame, pixel-screen, pixel-btn, pixel-chip, lcd-scanlines, retro-room-bg, 
 | `.pixel-btn` | рамка 3px, radius 10px, тень `0 4px 0`, `:active` вдавливает | крупные CTA |
 | `.pixel-btn-sm` | рамка 2px, radius 6px, тень `0 3px 0`, `:active` | кнопки в шапках, списках, строках |
 | `.pixel-chip` | рамка 2px + тень 2px, radius 6px | XP, «Надето», «скоро», бейджи |
+| `.pixel-plate` | рамка 2px `--app-panel-deep`, radius 6px, жёсткая тень `2px 2px 0` | плашки HUD (уровень/streak/coins), плашка еды на главном |
 | `.sprite-frame` / `.pixelated` | `image-rendering: pixelated` | спрайты и пиксель-арт PNG |
 | `.animate-pixel-bob` | покачивание 3.2s | старт-лягушка |
 | `.animate-pixel-pop` | `steps(3)` pop 260ms | нажатия/появление элементов |
@@ -911,6 +997,10 @@ pixel-frame, pixel-screen, pixel-btn, pixel-chip, lcd-scanlines, retro-room-bg, 
 | `app.screen` / `app.screen-deep` / `app.floor` / `app.floor-line` | `bg-app-screen`, `border-app-screen-deep` |
 | `app.blue` / `app.blue-soft` / `app.blue-contrast` | `bg-app-blue`, `text-app-blue-contrast` |
 | `app.yellow` / `app.purple` / `app.orange` | `bg-app-yellow`, `text-app-purple` |
+| `app.panel` / `app.panel-deep` / `app.panel-text` / `app.panel-muted` | `bg-app-panel`, `border-app-panel-deep`, `text-app-panel-text` |
+| `app.nav` / `app.nav-active` / `app.nav-active-text` / `app.nav-text` | `bg-app-nav`, `bg-app-nav-active`, `text-app-nav-text` |
+| `app.level-track` / `app.level-fill` / `app.food-plate` | `bg-app-level-track`, `bg-app-level-fill`, `bg-app-food-plate` |
+| `app.satiety-track` / `app.satiety-fill` | `bg-app-satiety-track`, `bg-app-satiety-fill` |
 | `borderRadius.app` / `app-sm` | `rounded-app`, `rounded-app-sm` |
 | `boxShadow.app` / `pixel` / `pixel-sm` / `pixel-lg` | `shadow-app`, `shadow-pixel`, `shadow-pixel-sm` |
 | `fontFamily.app` / `display` | `font-app`, `font-display` |
@@ -932,7 +1022,11 @@ pixel-frame, pixel-screen, pixel-btn, pixel-chip, lcd-scanlines, retro-room-bg, 
    (`pb-[calc(1rem+var(--app-safe-bottom))]`), не зашивай отступы под конкретный телефон.
 7. Тап-таргеты — не меньше 44px (`min-h-[44px]`), важные кнопки — 52px+ (`min-h-[52px]`).
 8. Проверяй 320–390px: без горизонтального скролла. Вкладки могут скроллиться осознанно
-   (`overflow-y-auto` в `BottomHalf`), меню — **нет**: три кнопки обязаны влезать целиком.
+   (`overflow-y-auto` в `BottomHalf`), меню — **нет** (тёмная панель `bg-app-panel` без скролла):
+   шкала сытости, плашка еды и CTA «На болото» обязаны влезать целиком вместе с `BottomNav`.
+9. Иконки — только `<PixelIcon name="..." />` из `@/components/ui` (PNG 64×64, `alt=""`,
+   `image-rendering: pixelated`). Эмодзи в UI не использовать; новые иконки — файл в
+   `src/assets/icons/` + имя в `PixelIconName` (зона Lead).
 
 ---
 
@@ -1092,7 +1186,7 @@ lib (src/lib) / data (src/data)         ← только types
   ↑
 store (src/store)                       ← types + data
   ↑
-components/ui (PixelButton, PixelPanel) ← types / React; чистая презентационная база
+components/ui (PixelButton, PixelPanel, PixelIcon) ← types / React; чистая презентационная база
   ↑
 components/hooks (useUiFeedback)        ← store + lib/telegram + lib/audio
   ↑
@@ -1126,7 +1220,7 @@ App.tsx                                 ← components + lib/telegram; толь�
 4. `src/types/index.ts` не правлю без Lead.
 5. Не добавляю npm-зависимостей, не меняю `package.json`/конфиги без согласования.
 6. `src/index.css`, `tailwind.config.js`, `index.html`, `src/assets/**` — зона Lead; стилизую
-   только через готовые токены, `PixelButton`/`PixelPanel` и `.pixel-*`-утилиты.
+   только через готовые токены, `PixelButton`/`PixelPanel`/`PixelIcon` и `.pixel-*`-утилиты.
 7. Весь новый UI-текст — на русском; тап-таргеты ≥44px; проверяю light/dark и ширину 320–390px.
 8. Использую селекторы стора, экшены для изменений, токены для стилей, `@/` для импортов.
 9. После изменений: `run-pnpm.cmd typecheck` → 0, `run-pnpm.cmd build` → успех.
@@ -1134,9 +1228,9 @@ App.tsx                                 ← components + lib/telegram; толь�
 
 ### 13.4. Рецепты типовых задач
 
-- **Новая вкладка** — раздел 7 (4 шага: union → `src/features/<name>/<Name>View.tsx`
-  с именованным экспортом → запись в `bottomTabRegistry` → объект в `MENU_ACTIONS`).
-  Верхняя половина не меняется.
+- **Новая вкладка** — раздел 7 (4 шага: union `BottomTabId` → `src/features/<name>/<Name>View.tsx`
+  с именованным экспортом → запись в `bottomTabRegistry` с `order` и (по желанию) `inNav: false`
+  → иконка в `NAV_ICONS` в `BottomNav` для навигационной вкладки). Верхняя половина не меняется.
 - **Новый урок** — раздел 8 (объект `Lesson` в `src/data/lessons.ts`, `correctWordIds` —
   подмножество `words`). Стор и `LessonView` не меняются; урок сам появится в списке.
 - **Новый экран/модалка** — новый самостоятельный экран: значение `AppScreen` (типы, только
@@ -1153,8 +1247,13 @@ App.tsx                                 ← components + lib/telegram; толь�
   `PixelPanel` (`card`/`screen`/`cream`). Произвольный блок — класс `.pixel-frame` или
   `.pixel-frame-sm` + `bg-app-card`. Не собирай рамку и тень вручную: `.pixel-btn`/`.pixel-btn-sm`
   уже дают физическое нажатие. Тап-таргет — не меньше `min-h-[44px]`.
-- **Заголовок, число, XP** — `font-display` + маленький размер (`text-[8px]`…`text-xs`) +
-  `leading-relaxed`/`leading-none`; тело и длинные кнопки — `font-app`. Не подключай сторонние шрифты.
+- **Пиксельная иконка** — `<PixelIcon name="coin" className="h-6 w-6" />` из
+  `@/components/ui/PixelIcon`. Имя — из `PixelIconName` (`lily`, `chest`, `crown`, `compass`,
+  `heart`, `coin`, `fire`, `strawberry`, `book`), PNG лежит в `src/assets/icons/`. Эмодзи в UI
+  не использовать (исключение — `emoji` в данных `shopItems`/реестра вкладок).
+- **Заголовок, число, XP** — `font-display` (Jambilee) + размер 9–13px, для CTA до 20px;
+  помни, что **кириллицы в Jambilee нет** — русский текст в `font-display` падает на
+  `Pixelify Sans` из стека. Тело и длинные кнопки — `font-app`. Не подключай сторонние шрифты.
 - **Новый спрайт/анимация питомца** — PNG-кадры в `src/assets/pet/` (кадр 64×64, спрайт-листы
   горизонтальные), рендер через `sprite-frame`/`pixelated`; пороги и поведение — в `PetStage`
   (см. 9.3). Не забудь `settingsStore.animationsEnabled`.
@@ -1173,6 +1272,7 @@ App.tsx                                 ← components + lib/telegram; толь�
 | `alert()` / `confirm()` / `prompt()` | в Telegram они заблокированы; только UI-состояния |
 | Правка `src/types/index.ts` без Lead | это замороженный контракт |
 | Хардкод цветов/радиусов/теней в `tsx` | ломает тему Telegram и dark mode; только `--app-*`/Tailwind-токены |
+| Эмодзи в UI вместо `<PixelIcon>` | канон — свои PNG-иконки; эмодзи выглядят по-разному на платформах |
 | Внешние шрифты/CDN (Google Fonts и т.п.) | лишняя сетевая зависимость и офлайн-провал в Telegram WebView; шрифты только self-hosted |
 | `blur-*`, `shadow-md/lg/xl`, `rounded-xl+`, градиенты на кнопках | ломает пиксельный канон: только жёсткие тени и рамки `.pixel-*` |
 | Правка `src/index.css` / `tailwind.config.js` без Lead | это фундамент стилей; фича не добавляет свои токены/утилиты |
@@ -1198,26 +1298,39 @@ C:\Users\kotaz\Downloads\tamang\run-pnpm.cmd build
 
 - [ ] старт: пиксельная лягушка-«устройство» по центру, текста нет; тап по ней → главный экран;
 - [ ] верх: LCD-экран с лягушкой-питомцем, тап по питомцу даёт реакцию (спрайт/выражение, звук,
-      haptic); HUD «УР.N / XP» корректен; переключение вкладок не сбрасывает питомца.
-      Полоски Health/Mood временно скрыты (`PetStats` сохранён в коде);
-- [ ] меню: ровно три чанки-кнопки (Урок / Магазин / Настройки), без заголовка, иконок и описаний;
-      все три целиком видны без скролла даже на 568px по высоте;
-- [ ] вкладки: урок/магазин/настройки прокручиваются осознанно (внутренний `overflow-y-auto`),
-      сверху «← Назад» и название вкладки; тап-таргеты ≥44px;
+      haptic); питомец блуждает по полу, а не ходит пинг-понгом между краями;
+      переключение вкладок не сбрасывает питомца. Полоски Health/Mood временно скрыты
+      (`PetStats` сохранён в коде);
+- [ ] HUD (`PetHud`): тёмная полоса над LCD, три плашки — уровень с заливкой по
+      `getLevelProgress`, огонёк `streak`, монеты `coins`; цифры совпадают с `petStore`;
+- [ ] меню: тёмная панель без скролла — сердце и подпись «Сытость» со шкалой `satiety`, плашка еды
+      с `PixelIcon strawberry` и `x{food}`, CTA «На болото» с `PixelIcon book` → вкладка «Урок»;
+- [ ] нижняя навигация (`BottomNav`): постоянная тёмно-зелёная полоса, вкладки из
+      `bottomTabRegistry` с `inNav !== false` (Главная/Магазин/Гардероб/Настройки; «Урок» скрыт),
+      активная — светло-зелёный квадрат, иконки PixelIcon, подписи `font-display` 10px;
+- [ ] вкладки: урок/магазин/гардероб/настройки прокручиваются осознанно (внутренний
+      `overflow-y-auto`), сверху «← Назад» и название вкладки; тап-таргеты ≥44px;
 - [ ] урок: вкладка открывается списком уроков (сессия не активна); выбор урока; сборка ответа,
       «Проверить», верный/неверный путь, «Дальше», повторный клик по слову игнорируется, пустой
       ответ не проверяется; после последнего урока — экран «Все уроки пройдены!»; кнопки
       «Прослушать»/«Голосом» — `disabled` с бейджем «скоро»;
 - [ ] магазин: надеть/снять обновляет питомца; недоступные товары — «скоро»;
+- [ ] гардероб: только наряды и аксессуары (еда отфильтрована); надетое — «Снять», полученное —
+      «Надеть», недоступное — «Скоро»; действия идут через `equipItem`/`unequipItem`;
 - [ ] настройки: пиксельные переключатели влияют на поведение, сбросы работают через inline-UI;
-- [ ] стиль: `font-display` только на заголовках/числах, `font-app` на теле; жёсткие 2–3px рамки и
-      4px тени без размытия; кнопки «вдавливаются» при нажатии; нет `blur-*`/градиентов;
-- [ ] обе темы: текст читаем — на мятном LCD используется `text-app-ink`, на карточках
-      `text-app-text`; нет чёрного текста на тёмных карточках;
-- [ ] прогресс уроков и статы переживают перезагрузку страницы (localStorage-ключи из раздела 6);
+- [ ] стиль: `font-display` только на коротких заголовках/числах (Jambilee, латиница), `font-app`
+      на теле и кириллице; жёсткие 2–3px рамки и 4px тени без размытия; кнопки «вдавливаются»
+      при нажатии; нет `blur-*`/градиентов; иконки — только `PixelIcon`, эмодзи в UI нет;
+- [ ] обе темы: текст читаем — на мятном LCD используется `text-app-ink`, на тёмных панелях
+      `text-app-panel-text`/`text-app-nav-text`, на карточках `text-app-text`; нет чёрного текста
+      на тёмных поверхностях;
+- [ ] прогресс уроков, статы, `coins`/`food`/`streak` переживают перезагрузку страницы
+      (persist `petStore` version 2, ключи из раздела 6); в первый визит дня `streak` растёт на 1,
+      повторный запуск в тот же день — нет;
 - [ ] вне Telegram (обычный браузер): работает, тема светлая/тёмная по системе, ошибок в консоли нет;
-- [ ] ширина 320–390px и высокий экран: нет горизонтального скролла, меню не скроллится,
-      safe-area учтён;
+- [ ] ширина 320–390px и высокий экран: нет горизонтального скролла, меню не скроллится, нижняя
+      навигация с четырьмя вкладками влезает по ширине и не перекрывается safe-area; HUD-плашки
+      уровня/streak/coins не обрезаются;
 - [ ] деплой: push в `main` → workflow «Deploy to GitHub Pages» зелёный → живой URL обновился
       (см. раздел 2.5).
 
@@ -1226,6 +1339,16 @@ C:\Users\kotaz\Downloads\tamang\run-pnpm.cmd build
 Если задача требует изменить контракт (публичный API, типы, persist-ключи, структуру реестра) —
 остановись, опиши проблему и согласуй с Lead. Изменение контракта без согласования — блокер
 приёмки, даже если код собирается.
+
+### 13.8. Журнал решений
+
+Короткая хроника архитектурных и визуальных решений (новые записи — сверху):
+
+- **14.11.2026 — вторая итерация пиксельного редизайна.** Шрифт `Jambilee` (латиница/цифры) +
+  `Pixelify Sans` (кириллица) вместо `Press Start 2P`; HUD и нижняя панель переведены на тёмные
+  токены `--app-panel*`/`--app-nav*`; добавлена вкладка «Гардероб» (`WardrobeView`); блуждание
+  пета вместо пинг-понга (`useFrogWalk`); `petStore` persist version 2 с миграцией
+  (`satiety`, `coins`, `food`, `streak`, `lastVisitDate`).
 
 ---
 
@@ -1236,13 +1359,15 @@ C:\Users\kotaz\Downloads\tamang\run-pnpm.cmd build
 - **Нет бэкенда и авторизации.** Все данные — мок (`src/data/*`), прогресс — `localStorage`
   на устройстве. Данные Telegram-пользователя доступны через `useTelegram()`, но не используются
   для сохранения на сервере.
-- **Магазин без экономики.** Нет валюты, покупок и списаний: товары либо `ownedByDefault`, либо
-  «скоро». `ShopItem.price` — только витрина.
+- **Магазин без экономики.** `coins` и `food` уже есть в `petStore` и HUD, но покупок и списаний
+  нет: товары либо `ownedByDefault`, либо «скоро». `ShopItem.price` — только витрина.
 - **Переодевание пока не отображается.** Слой нарядов `PetOutfitSlot` временно скрыт — эмодзи-заглушки
   убраны, пиксельные наряды в следующей итерации. Файл компонента и `equippedItemIds` сохранены.
-- **Анимация питомца спрайтовая, но не скелетная.** Ходьба, подскок, разворот, перенос и
-  приземление работают на спрайт-листах; отдельного walk-листа нет — ходьба крутит кадры
+- **Анимация питомца спрайтовая, но не скелетная.** Блуждание к цели, подскок, разворот, перенос и
+  приземление работают на спрайт-листах; отдельного walk-листа нет — при движении крутятся кадры
   `idle`, статичны фон-пол и «комната» питомца.
+- **Jambilee без кириллицы.** `font-display` для русских заголовков падает на `Pixelify Sans`
+  (фолбэк в стеке `tailwind.config.js`); кириллического начертания Jambilee нет.
 - **Health/Mood временно скрыты**: компонент `PetStats` сохранён, но не рендерится в `PetHalf`.
 - **Аудио и голос — no-op** (`audioService.isSupported = false`, `voiceInputService.isSupported = false`).
 - **Нет i18n**: интерфейс и комментарии на русском, уроки — английский как демо-язык.
@@ -1252,8 +1377,8 @@ C:\Users\kotaz\Downloads\tamang\run-pnpm.cmd build
 
 1. **Бэкенд + Telegram-авторизация**: проверка `initData` на сервере, синхронизация статов и
    прогресса между устройствами (сторы остаются прежними, меняется слой persist/адаптер).
-2. **Экономика магазина**: валюта (`coins`/`gems` в `petStore` или отдельном сторе), покупка
-   предметов, снятие/надевание как вложение; UI уже готов к `owned`.
+2. **Экономика магазина**: покупка предметов за `coins`, кормление за `food`, списание и
+   пополнение через экшены `petStore`; UI уже готов к `owned`.
 3. **Развитие питомца**: скелетные/покадровые анимации (walk-лист, реакции на кормление и сон),
    комната, скины; вернуть слой нарядов на пиксельных спрайтах одежды вместо эмодзи-заглушек.
 4. **TTS/STT**: реализация `AudioService`/`VoiceInputService` по зафиксированным интерфейсам,
@@ -1296,10 +1421,12 @@ C:\Users\kotaz\Downloads\tamang\run-pnpm.cmd build
 Деплой:    push в main → .github/workflows/deploy.yml → https://zaharrr4ik.github.io/tamang/
 Сторы:     petStore 'tamang.pet' | uiStore (без persist) |
            lessonStore 'tamang.lesson-progress' | settingsStore 'tamang.settings'
-Верх/низ:  PetHalf (LCD + PetStage + HUD, постоянно; слой нарядов скрыт) + BottomHalf (реестр по uiStore.bottomTab)
-Стиль:     .pixel-btn/.pixel-frame/.pixel-chip; font-display = Press Start 2P, font-app = Pixelify Sans
+Верх/низ:  PetHalf (тёмная полоса PetHud + LCD с PetStage, постоянно; слой нарядов скрыт) +
+           BottomHalf (реестр по uiStore.bottomTab + постоянный BottomNav)
+Стиль:     .pixel-btn/.pixel-frame/.pixel-chip/.pixel-plate; font-display = Jambilee (латиница),
+           font-app = Pixelify Sans (кириллица); иконки — PixelIcon
 Новый модуль: types (union, Lead) → src/features/<name>/<Name>View.tsx →
-           src/modules/registry.tsx → кнопка в MenuView
+           src/modules/registry.tsx (order, inNav) → иконка в NAV_ICONS (BottomNav)
 Нельзя:    новые пакеты, alert/confirm, правка types/index.css/assets без Lead, хардкод цветов,
            blur-тени и градиенты у кнопок, внешние шрифты/CDN, импорт фич друг в друга, any
 Готово:    typecheck=0, build=0 (Lead), ручной чек-лист раздела 13.6

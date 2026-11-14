@@ -11,17 +11,20 @@
 │ App.tsx  — только сборка: TelegramProvider → RootScreen      │
 ├─────────────────────────────────────────────────────────────┤
 │ components/  RootScreen, StartScreen, MainScreen, BackButton,│
-│              BottomHalf, pet/{PetHalf, PetStage, PetStats,   │
-│              PetOutfitSlot}, hooks/useUiFeedback             │
+│              BottomHalf, BottomNav, pet/{PetHalf, PetHud,    │
+│              PetStage, PetStats, PetOutfitSlot}, hooks/…     │
+│              ui/{PixelButton, PixelPanel, PixelIcon}         │
 ├─────────────────────────────────────────────────────────────┤
 │ modules/registry.tsx  — реестр вкладок: id → component       │
 ├─────────────────────────────────────────────────────────────┤
 │ features/  menu/MenuView, lesson/LessonView,                 │
-│            shop/ShopView, settings/SettingsView              │
+│            shop/ShopView, wardrobe/WardrobeView,             │
+│            settings/SettingsView                             │
 ├─────────────────────────────────────────────────────────────┤
 │ store/  petStore, uiStore, lessonStore, settingsStore        │
 │ lib/    audio.ts, voice.ts, telegram/*                       │
 │ data/   lessons.ts, shopItems.ts, petConfig.ts               │
+│ assets/ fonts/jambilee.woff2, icons/*.png, pet/*.png         │
 ├─────────────────────────────────────────────────────────────┤
 │ types/index.ts — доменные типы и интерфейсы, без реализации  │
 └─────────────────────────────────────────────────────────────┘
@@ -50,9 +53,10 @@ uiStore.screen
 ├── 'start' → StartScreen (яйцо + «Play!») — uiStore.start()
 └── 'main'  → MainScreen
              ├── PetHalf      — постоянная зона (не зависит от bottomTab)
+             │                  (PetHud + LCD-сцена PetStage)
              └── BottomHalf   — динамическая зона
-                 ├── BackButton (если bottomTab !== 'menu')
-                 └── bottomTabRegistry по uiStore.bottomTab
+                 ├── контент вкладки (menu — тёмная панель, остальные — BackButton + скролл)
+                 └── BottomNav — постоянная нижняя полоса (реестр, inNav !== false)
 ```
 
 Навигация хранится в `uiStore` (`screen`, `bottomTab`), роутера и URL-маршрутов нет. Смена
@@ -68,7 +72,7 @@ uiStore.screen
 
 | Стор | Ключ persist | Хранит | Не хранит |
 |---|---|---|---|
-| `petStore` | `tamang.pet` | `name`, `stats`, `equippedItemIds`, `totalXp`, `lastInteractionAt` | `expression` (всегда стартует с `'idle'`) |
+| `petStore` | `tamang.pet` (v2) | `name`, `stats` (health/mood/satiety), `equippedItemIds`, `totalXp`, `lastInteractionAt`, `coins`, `food`, `streak`, `lastVisitDate` | `expression` (всегда стартует с `'idle'`) |
 | `uiStore` | — | `screen`, `bottomTab` | — |
 | `lessonStore` | `tamang.lesson-progress` | `completedLessonIds` | текущую сессию (`currentLessonId`, `selectedWordIds`, `status`, `attempts`) |
 | `settingsStore` | `tamang.settings` | `soundEnabled`, `hapticsEnabled`, `animationsEnabled` | — |
@@ -93,12 +97,14 @@ uiStore.screen
   └─ локальный hitCount += 1 → повторный CSS-анимацией animate-pop
   │
   ├─ PetStage перерисовывается по селекторам (expression/stats)
-  └─ PetStats перерисовывается (полоски Health/Mood); PetHalf — по totalXp (уровень)
+  └─ PetHud/PetHalf перерисовываются по totalXp (уровень), streak и coins
 ```
 
 Звук и вибрацию издаёт UI-слой, а не стор: `useUiFeedback` применяет `settingsStore`
 (`soundEnabled`, `hapticsEnabled`). `PetOutfitSlot` перерисовывается по `equippedItemIds`;
 пустой контейнер анимаций — отдельный визуальный слой, на данные не влияет.
+`RootScreen` при старте вызывает `petStore.registerVisit()`, который обновляет `streak`
+(не чаще раза в день) и `lastVisitDate`.
 
 ## 5. Data-flow: прохождение урока
 
@@ -150,13 +156,15 @@ export const bottomTabRegistry: BottomTabEntry[]; // сортировка по o
 export function getBottomTab(id: BottomTabId): BottomTabEntry;
 ```
 
-- вкладка = запись `{ id, title, emoji, order, Component }`;
+- вкладка = запись `{ id, title, emoji, order, inNav?, Component }`;
 - `BottomTabId` — union в `src/types` (изменение только через Lead);
-- кнопки входа в вкладки живут в `MenuView` и вызывают `uiStore.openTab(id)`;
-- `BottomHalf` сам рисует `BackButton` для всех вкладок, кроме `menu`.
+- `BottomNav` рисует все вкладки, кроме помеченных `inNav: false` (например, `lesson`):
+  она открывается кнопкой «На болото» в `MenuView` через `uiStore.openTab('lesson')`;
+- `BottomHalf` сам рисует шапку с `BackButton` для всех вкладок, кроме `menu`.
 
-Добавление вкладки — 4 правки (тип → компонент фичи → запись в реестр → кнопка в меню), без
-изменений `App`, `MainScreen`, `PetHalf` и других фич. Полный рецепт — README, раздел 7.
+Добавление вкладки — 4 правки (тип → компонент фичи → запись в реестр → иконка в `BottomNav`,
+если вкладка должна быть в навигации), без изменений `App`, `MainScreen`, `PetHalf` и других
+фич. Полный рецепт — README, раздел 7.
 
 ## 7. Внешние слои
 
@@ -166,8 +174,10 @@ export function getBottomTab(id: BottomTabId): BottomTabEntry;
   `haptic` — no-op. UI-код обращается к Telegram через `useTelegram()` (из `@/lib/telegram`)
   или общий `useUiFeedback()`; прямые `window.Telegram` в компонентах и фичах запрещены.
 - **Стили.** Telegram-переменные → семантические токены `--app-*` в `src/index.css` → классы
-  Tailwind (`bg-app-bg`, `text-app-text`, ...). Компоненты не хардкодят цвета и не проверяют тему
-  вручную: `--app-*` меняются вместе с `html.dark`.
+  Tailwind (`bg-app-bg`, `text-app-text`, `bg-app-panel`, ...). Компоненты не хардкодят цвета
+  и не проверяют тему вручную: `--app-*` меняются вместе с `html.dark`. Иконки — только
+  `PixelIcon` (растровые PNG из `src/assets/icons`); шрифты — self-hosted Jambilee (латиница/
+  цифры) + Pixelify Sans (кириллица), без CDN.
 - **Сервисы.** `audioService` (`isSupported = false`) и `voiceInputService` (`isSupported = false`)
   — интерфейсы с no-op реализациями в `src/lib`. Звуковые эффекты UI уже идут через
   `useUiFeedback().playSound(...)`; кнопки урока «Прослушать» и «Голосом» — `disabled` с бейджем
@@ -178,9 +188,10 @@ export function getBottomTab(id: BottomTabId): BottomTabEntry;
 
 | Что расширяем | Куда добавлять | Что не трогаем |
 |---|---|---|
-| Новая вкладка | `src/types` (union, Lead) → `src/features/<name>/<Name>View.tsx` → `src/modules/registry.tsx` → `MenuView` | `App`, `MainScreen`, `PetHalf`, другие фичи |
+| Новая вкладка | `src/types` (union, Lead) → `src/features/<name>/<Name>View.tsx` → `src/modules/registry.tsx` → иконка в `BottomNav` (если нужна в навигации) | `App`, `MainScreen`, `PetHalf`, другие фичи |
 | Новый урок | объект `Lesson` в `src/data/lessons.ts` | `lessonStore`, `LessonView`, реестр |
-| Новая стата | `src/types` (Lead) → `PET_CONFIG` → `petStore` → `PetStats` | остальные фичи |
+| Новая стата | `src/types` (Lead) → `PET_CONFIG` → `petStore` → UI (HUD/панель) | остальные фичи |
+| Новая иконка | PNG 64×64 в `src/assets/icons/` → `PixelIconName` в `PixelIcon.tsx` | вёрстка экранов |
 | Новая настройка | `settingsStore` + `SettingsView` + UI-потребитель | другие модули |
 | Новый звук/голос | реализация `AudioService`/`VoiceInputService` в `src/lib` | вызовы в UI |
 | Новый нативный API Telegram | `src/lib/telegram/types.ts` + `TelegramProvider`/`useTelegram` | прямые `window.Telegram` в фичах |

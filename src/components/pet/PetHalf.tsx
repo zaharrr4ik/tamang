@@ -1,5 +1,4 @@
-import { getPetLevel } from '@/data/petConfig';
-import { usePetStore } from '@/store';
+import { PetHud } from './PetHud';
 import { PetStage } from './PetStage';
 
 /**
@@ -14,15 +13,17 @@ import { PetStage } from './PetStage';
  * сцене полноразмерный positioned-родитель.
  */
 export function PetHalf() {
-  const totalXp = usePetStore((state) => state.totalXp);
-  const level = getPetLevel(totalXp);
-
   return (
     <section
       aria-label="Питомец"
-      className="relative flex h-[50%] min-h-[240px] shrink-0 flex-col px-3 pb-2 pt-[calc(var(--app-safe-top)+0.75rem)]"
+      className="relative flex h-[58%] min-h-[240px] shrink-0 flex-col gap-1.5 pt-[calc(var(--app-safe-top)+0.5rem)]"
     >
-      <div className="pixel-screen relative min-h-0 flex-1 overflow-hidden rounded-none">
+      {/* Тёмная полоса устройства с HUD уровня, серии заходов и монет. */}
+      <div className="shrink-0 bg-app-panel px-2 py-1.5">
+        <PetHud />
+      </div>
+
+      <div className="pixel-screen relative mx-3 mb-2 min-h-0 flex-1 overflow-hidden rounded-none">
         {/* Сцена: PetStage сам рисует пол и лягушку и заполняет этот контейнер. */}
         <div className="absolute inset-0">
           <PetStage />
@@ -37,16 +38,6 @@ export function PetHalf() {
           aria-hidden="true"
           className="lcd-scanlines pointer-events-none absolute inset-0 z-10"
         />
-
-        {/* Компактный HUD уровня в левом верхнем углу экрана, без эмодзи. */}
-        <div className="absolute left-2 top-2 z-20 flex items-center gap-1.5">
-          <span className="pixel-chip bg-app-card px-1.5 py-1 font-display text-[8px] leading-none text-app-text">
-            УР.{level}
-          </span>
-          <span className="pixel-chip bg-app-card px-1.5 py-1 font-display text-[8px] leading-none text-app-hint">
-            {totalXp} XP
-          </span>
-        </div>
       </div>
     </section>
   );

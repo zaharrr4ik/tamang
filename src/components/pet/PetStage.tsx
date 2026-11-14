@@ -20,11 +20,9 @@ import { FROG_DISPLAY_HEIGHT, FROG_DISPLAY_WIDTH } from './petSprites';
 import { FROG_SHADOW_WIDTH, useFrogWalk } from './useFrogWalk';
 
 /** Минимальная высота пола, px. */
-const MIN_FLOOR_HEIGHT = 56;
+const MIN_FLOOR_HEIGHT = 64;
 /** Доля высоты сцены, которую занимает пол (остальное — «воздух» LCD-экрана). */
-const FLOOR_HEIGHT_RATIO = 0.28;
-/** Насколько пиксельная тень ниже линии лап, px. */
-const SHADOW_OFFSET = 10;
+const FLOOR_HEIGHT_RATIO = 0.34;
 /** Жизнь одного всплеска сердец, мс (чуть дольше 900 мс анимации). */
 const HEART_LIFETIME_MS = 1000;
 /** Задержка между сердцами одного всплеска, мс. */
@@ -59,8 +57,9 @@ function clamp(value: number, min: number, max: number): number {
 /**
  * Сцена питомца: пиксельная лягушка живёт на mint-LCD-полу.
  *
- * Наполнение: пол, жёсткая пиксельная тень, спрайт-лягушка (ходьба, взгляд на
- * указатель, клик, drag-and-drop) и пиксельные сердца при поглаживании.
+ * Наполнение: пол, жёсткая пиксельная тень, спрайт-лягушка (медленное блуждание
+ * по полу вглубь сцены, взгляд на указатель, клик, drag-and-drop) и пиксельные
+ * сердца при поглаживании.
  * Позиция питомца пишется напрямую в DOM из rAF-цикла, поэтому анимация не
  * вызывает ре-рендеров React. Сцена заполняет positioned-родителя (absolute
  * inset-0 внутри .pixel-screen), пол прижат к нижней кромке экрана.
@@ -83,7 +82,7 @@ export function PetStage() {
   const fxIdRef = useRef(0);
 
   // Геометрия сцены: замеряем до первой отрисовки, чтобы лягушка сразу встала
-  // по центру пола, и пересчитываем при ресайзе / повороте экрана.
+  // в центр рабочей области пола, и пересчитываем при ресайзе / повороте экрана.
   useLayoutEffect(() => {
     const stage = stageRef.current;
     if (stage === null) {
@@ -160,7 +159,13 @@ export function PetStage() {
         id: heartIdRef.current,
         tone: HEART_TONES[index % HEART_TONES.length],
         leftPct: clamp(frogCenterPct + (Math.random() * 2 - 1) * 9, 8, 92),
-        bottomPx: floorHeight + FROG_DISPLAY_HEIGHT - 14 + Math.random() * 8,
+        // Сердца всплывают над головой: считаем верх спрайта по его реальному
+        // прямоугольнику (базовая линия плавает по глубине, floorHeight мало).
+        bottomPx: clamp(
+          stageRect.bottom - frogRect.top - 14 + Math.random() * 8,
+          8,
+          Math.max(8, stageRect.height - 8),
+        ),
         delayMs: index * HEART_STAGGER_MS,
       });
     }
@@ -171,7 +176,7 @@ export function PetStage() {
       }, HEART_LIFETIME_MS);
       heartTimersRef.current.push(timerId);
     }
-  }, [floorHeight]);
+  }, []);
 
   /** Короткий тап по лягушке: ласка, счётчик, звук, вибрация и сердца. */
   const handleTap = useCallback((): void => {
@@ -259,26 +264,27 @@ export function PetStage() {
         style={{ height: floorHeight }}
       />
 
-      {/* Пиксельная тень-полоска под лапами, без blur и скруглений. */}
+      {/* Пиксельная тень-полоска под лапами, без blur и скруглений.
+          Позицию по X и базовой линии пишет rAF через transform. */}
       <div
         ref={shadowRef}
         aria-hidden="true"
-        className="pointer-events-none absolute left-0 h-2 bg-app-ink opacity-25"
-        style={{ width: FROG_SHADOW_WIDTH, bottom: floorHeight - SHADOW_OFFSET }}
+        className="pointer-events-none absolute bottom-0 left-0 h-2 bg-app-ink opacity-25"
+        style={{ width: FROG_SHADOW_WIDTH }}
       />
 
-      {/* Питомец: absolute-элемент 112×64 px, позицию пишет rAF через transform. */}
+      {/* Питомец: absolute-элемент 112×64 px, позицию пишет rAF через transform.
+          Низ элемента (лапки) совпадает с базовой линией baselineY. */}
       <div
         ref={frogRef}
         role="button"
         tabIndex={0}
         aria-label="Питомец"
         data-hit-count={hitCount}
-        className="absolute left-0 z-10 flex cursor-grab touch-none select-none items-end justify-center active:cursor-grabbing focus-visible:outline focus-visible:outline-2 focus-visible:outline-dashed focus-visible:outline-app-ink"
+        className="absolute bottom-0 left-0 z-10 flex cursor-grab touch-none select-none items-end justify-center active:cursor-grabbing focus-visible:outline focus-visible:outline-2 focus-visible:outline-dashed focus-visible:outline-app-ink"
         style={{
           width: FROG_DISPLAY_WIDTH,
           height: FROG_DISPLAY_HEIGHT,
-          bottom: floorHeight,
         }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}

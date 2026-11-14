@@ -35,6 +35,31 @@
 Все типы — в `src/types/index.ts`, импорт `import type { ... } from '@/types'`. Ниже — актуальный срез (полный список в файле):
 `AppScreen`, `BottomTabId`, `LessonStatus`, `LessonMode`, `PetExpression`, `PetStats`, `PetState`, `WordToken`, `Lesson`, `LessonSession`, `ShopItem`, `TelegramUser`, `SoundId`, `AudioService`, `VoiceInputService`, `BottomTabModule`.
 
+Актуальные формы (14.11.2026):
+
+```ts
+type BottomTabId = 'menu' | 'lesson' | 'shop' | 'wardrobe' | 'settings';
+interface PetStats { health: number; mood: number; satiety: number; }
+interface PetState {
+  name: string;
+  stats: PetStats;
+  expression: PetExpression;
+  equippedItemIds: string[];
+  totalXp: number;
+  lastInteractionAt: number | null;
+  coins: number;
+  food: number;
+  streak: number;              // серия ежедневных заходов
+  lastVisitDate: string | null; // 'YYYY-MM-DD' по локальной дате
+}
+interface BottomTabModule {
+  id: BottomTabId; title: string; emoji: string; order: number;
+  /** false — вкладка открывается программно и не показывается в нижней навигации. */
+  inNav?: boolean;
+}
+```
+
+
 ## 3. Zustand-сторы
 
 `create` + `persist` из `zustand`/`zustand/middleware` (версия 4.5.5). Селекторы обязательны: `usePetStore((s) => s.stats)`.
@@ -54,6 +79,8 @@ interface PetStoreState extends PetState {
   equipItem(itemId: string): void;
   unequipItem(itemId: string): void;
   renamePet(name: string): void;
+  /** Ежедневный заход: идемпотентен в рамках одного дня; вчера+сегодня → streak+1, иначе 1. Вызывается из RootScreen. */
+  registerVisit(): void;
   resetPet(): void;
 }
 
@@ -61,8 +88,9 @@ export const usePetStore = create<PetStoreState>()(...);
 ```
 
 - Начальные значения берутся из `src/data/petConfig.ts`.
-- `persist` хранит: `name`, `stats`, `equippedItemIds`, `totalXp`, `lastInteractionAt`. `expression` не персистится (при загрузке `'idle'`).
-- `resetPet()` — сброс к дефолтам.
+- `persist` (версия 2) хранит: `name`, `stats`, `equippedItemIds`, `totalXp`, `lastInteractionAt`, `coins`, `food`, `streak`, `lastVisitDate`. `expression` не персистится (при загрузке `'idle'`).
+- Миграция со старых сохранений — `migrate: (persisted) => migratePersistedState(persisted)`; недостающие поля (в т.ч. `stats.satiety`) добираются из `PET_CONFIG` / `DEFAULT_PERSISTED_STATE`, счётчики нормализуются `normalizeCount`.
+- `resetPet()` — сброс к дефолтам (включая `coins`/`food`/`streak`/`lastVisitDate`).
 - Самостоятельно вызывает `audioService` НЕ должен (звук — на стороне UI).
 
 ### 3.2 `src/store/uiStore.ts`
@@ -174,7 +202,9 @@ export const shopItems: ShopItem[]; // >= 5 товаров; 2-3 с ownedByDefaul
 // petConfig.ts
 export const PET_CONFIG: {
   defaultName: string;         // 'Таманг'
-  defaultStats: PetStats;      // { health: 100, mood: 100 }
+  defaultStats: PetStats;      // { health: 100, mood: 100, satiety: 60 }
+  defaultCoins: number;        // 120
+  defaultFood: number;         // 2
   expressions: Record<PetExpression, string>; // эмодзи по выражению
   maxStat: number;             // 100
   minStat: number;             // 0
@@ -185,6 +215,15 @@ export const PET_CONFIG: {
 };
 /** Уровень питомца по totalXp (1..8); аддитивное расширение, согласовано Lead. */
 export function getPetLevel(totalXp: number): number;
+
+export interface LevelProgress {
+  level: number;
+  xpInLevel: number;
+  xpForNextLevel: number | null; // null на максимальном уровне
+  percent: number;               // 0..100, заполнение плашки уровня
+}
+/** Прогресс внутри текущего уровня для HUD. */
+export function getLevelProgress(totalXp: number): LevelProgress;
 ```
 
 `levelThresholds`/`getPetLevel` изначально не были описаны в контракте и появились в State-слое как расширение; на ревью узаконены Lead (см. §9).
@@ -197,30 +236,36 @@ export function getPetLevel(totalXp: number): number;
 export interface BottomTabEntry extends BottomTabModule {
   Component: React.ComponentType;
 }
-/** Отсортирован по order; включает menu, lesson, shop, settings. */
+/** Отсортирован по order; включает menu, lesson, shop, wardrobe, settings. */
 export const bottomTabRegistry: BottomTabEntry[];
 export function getBottomTab(id: BottomTabId): BottomTabEntry;
 ```
+
+Нижняя навигация (`src/components/BottomNav.tsx`) рендерит `bottomTabRegistry.filter((tab) => tab.inNav !== false)`:
+Главная (`menu`), Магазин (`shop`), Гардероб (`wardrobe`), Настройки (`settings`).
+Урок (`lesson`) — `inNav: false`: открывается только кнопкой «На болото» в `MenuView`.
+Иконки навигации — `PixelIcon` (`lily`/`chest`/`crown`/`compass`), активная вкладка подсвечена `bg-app-nav-active`.
 
 ### 7.2 Дерево компонентов (свобода внутри, но публичные компоненты и поток обязательны)
 
 ```
 App
 └── TelegramProvider
-    └── RootScreen (читает uiStore.screen)
+    └── RootScreen (читает uiStore.screen; registerVisit() и audioService.setEnabled)
         ├── StartScreen          // яйцо по центру + кнопка «Play!» -> uiStore.start()
         └── MainScreen
             ├── PetHalf          // верхняя половина, НЕ меняется при смене вкладки
-            │   ├── PetStage     // питомец-эмодзи, клик -> petStore.petClick(); слот питомца
-            │   ├── PetStats     // Health / Mood (полоски + числа)
-            │   └── PetOutfitSlot// слой надетых предметов + пустой контейнер под анимации
+            │   ├── PetHud       // тёмная полоса: уровень (getLevelProgress), огонёк (streak), монеты (coins)
+            │   ├── PetStage     // сцена LCD: пиксельный питомец, пол, тап -> petStore.petClick()
+            │   └── (PetStats / PetOutfitSlot временно не рендерятся)
             └── BottomHalf       // нижняя половина, динамическая
-                ├── BackButton   // видим, если bottomTab !== 'menu' -> backToMenu()
-                └── <Component из реестра по bottomTab>
-                        ├── MenuView   // 3 кнопки: Урок, Магазин, Настройки
-                        ├── LessonView // Duolingo-стиль: фраза питомца, банк слов, сборка ответа
-                        ├── ShopView   // сетка товаров, «надеть/снять» для owned, «скоро» для остальных
-                        └── SettingsView // переключатели + сбросы
+                ├── (контент вкладки)   // menu — тёмная панель без скролла, остальные — шапка BackButton + скролл
+                └── BottomNav           // постоянная нижняя полоса навигации
+                        MenuView        // «Сытость» + еда + CTA «На болото»
+                        LessonView      // Duolingo-стиль: фраза питомца, банк слов, сборка ответа
+                        ShopView        // сетка товаров
+                        WardrobeView    // надеть/снять предметы гардероба
+                        SettingsView    // переключатели + сбросы
 ```
 
 Требования к UI:
@@ -249,3 +294,5 @@ C:\Users\kotaz\Downloads\tamang\run-pnpm.cmd build
 | 12.11.2026 | В §6 узаконены `PET_CONFIG.levelThresholds: readonly number[]` ([0, 50, 120, 220, 350, 520, 750, 1050]) и `getPetLevel(totalXp): number`. | State-слой добавил их как расширение; README §9.1 уже описывал, QA отметил расхождение контракта и кода. |
 | 12.11.2026 | В §3.3 уточнено: награда в `checkAnswer` (`addXp` + `mood +4`) начисляется только при первом завершении урока; повторное прохождение пройденного урока даёт обратную связь без награды. | QA minor #4: повторные прохождения фармили XP. |
 | 12.11.2026 | В §3.3 зафиксировано, что `clearAnswer` из `wrong` возвращает `status='assembling'` (фактическое поведение State-слоя). | Сверка кода и контракта на ревью. |
+| 14.11.2026 | §2: `BottomTabId += 'wardrobe'`; `PetStats += satiety`; `PetState += coins/food/streak/lastVisitDate`; `BottomTabModule += inNav?`. §3.1: `registerVisit()`, persist v2 + `migrate`, 9 персистируемых полей. §6: `defaultStats.satiety=60`, `defaultCoins=120`, `defaultFood=2`, `LevelProgress`/`getLevelProgress`. §7: `PetHud`, `BottomNav`, `WardrobeView`; `lesson` — `inNav: false`, навигация через `BottomNav` + CTA «На болото» (MENU_ACTIONS удалён). | Редизайн под макет `primer.png`: тёмный HUD (уровень/огонёк/монеты), нижняя панель с сытостью и едой, вкладка «Гардероб», шрифт Jambilee. |
+| 14.11.2026 | `useFrogWalk` сохраняет публичный API, но меняет поведение: блуждание по целям (X 8–92%, Y от горизонта до низа сцены), скорости 10–16 / 7–12 px/s, паузы 1.5–6.5 с, 70% целей в средней трети. | Запрос пользователя: питомец должен двигаться медленно, с паузами и хаотично-целесообразно, а не пинг-понгом у краёв. |
