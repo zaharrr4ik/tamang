@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef } from 'react';
+import { useUiFeedback } from '@/components/hooks/useUiFeedback';
 import { FROG_IDLE_FRAME, getFrogFrameStyle } from '@/components/pet/petSprites';
+import { PixelButton } from '@/components/ui/PixelButton';
+import { PET_CONFIG } from '@/data/petConfig';
 import lilyActiveUrl from '@/assets/icons/lily-active.png';
 import lilyDefaultUrl from '@/assets/icons/lily-default.png';
 import lilyLockedUrl from '@/assets/icons/lily-locked.png';
@@ -10,19 +13,19 @@ import reedsUrl from '@/assets/icons/reeds.png';
 import starGrayUrl from '@/assets/icons/star-gray.png';
 import starYellowUrl from '@/assets/icons/star-yellow.png';
 import swampBgUrl from '@/assets/icons/swamp-bg.jpg';
-import { useLessonStore, useUiStore } from '@/store';
+import { useLessonStore, usePetStore, useSettingsStore, useUiStore } from '@/store';
+import type { Lesson, WordToken } from '@/types';
 
 /**
- * Карта главы в болотном стиле: заголовок и зигзагообразная змейка узлов,
- * построенная по реальному прогрессу уроков из lessonStore.
+ * Модуль уроков:
+ *  - если урок запущен (в lessonStore есть currentLessonId и такой урок найден) —
+ *    показываем экран прохождения урока;
+ *  - если нет — карту болота с прогрессом.
  *
- * Пройденные уроки (index < activeIndex) — кувшинка с тремя звёздами,
- * текущий (index === activeIndex) — активная кувшинка с лягушкой,
- * остальные (index > activeIndex) — заблокированные кувшинки с замком.
- * Линия пути считается динамически по тем же координатам, что и узлы.
- *
- * Экрану нужен полноэкранный слой поверх BottomNav, поэтому контейнер
- * зафиксирован во вьюпорте (fixed inset-0), а подложка прокручивается внутри.
+ * Карта строится по реальному прогрессу: пройденные уроки (index < activeIndex) —
+ * кувшинка с тремя звёздами, текущий (index === activeIndex) — активная кувшинка
+ * с лягушкой, остальные — заблокированные с замком. Линия пути рассчитывается
+ * динамически по тем же координатам, что и узлы.
  */
 
 /** Три звезды над пройденным узлом: заполненные жёлтые и пустые серые. */
@@ -44,7 +47,30 @@ function StarRow({ filled }: { filled: number }) {
   );
 }
 
-export function LessonView() {
+/**
+ * X-координата центра узла в контейнере w-72 (288px).
+ * 3-й урок (index === 2) стоит ровно по центру, остальные чередуются змейкой:
+ * 104 (влево) — 184 (вправо) — 144 (центр) — 104 (влево) — 184 (вправо) ...
+ */
+function getNodeX(index: number): 104 | 144 | 184 {
+  if (index === 2) {
+    return 144;
+  }
+  const isLeft = index < 2 ? index % 2 === 0 : index % 2 === 1;
+  return isLeft ? 104 : 184;
+}
+
+/** Tailwind-смещение узла, совпадающее с его X-координатой из getNodeX. */
+function getNodeOffsetClass(index: number): string {
+  const x = getNodeX(index);
+  if (x === 144) {
+    return 'translate-x-0';
+  }
+  return x === 104 ? '-translate-x-10' : 'translate-x-10';
+}
+
+/** Карта болота: змейка узлов по прогрессу + боковые награды у 3-го урока. */
+function SwampMap() {
   const lessons = useLessonStore((state) => state.lessons);
   const completedLessonIds = useLessonStore((state) => state.completedLessonIds);
   const startLesson = useLessonStore((state) => state.startLesson);
@@ -56,19 +82,20 @@ export function LessonView() {
     return found === -1 ? lessons.length : found;
   }, [lessons, completedLessonIds]);
 
-  // Зигзаг: центры кувшинок по вертикали — 40 + index * 128 (h-20 + gap-y-12),
-  // по горизонтали — 104 для чётных и 184 для нечётных (контейнер w-72 = 288px).
-  const pathD = useMemo(
-    () =>
-      lessons
-        .map((_, index) => {
-          const x = index % 2 === 0 ? 104 : 184;
-          const y = 40 + index * 128;
-          return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
-        })
-        .join(' '),
-    [lessons],
-  );
+  // Зигзаг: центры кувшинок по вертикали — 40 + index * 100 (h-20 + gap-y-5),
+  // по горизонтали — getNodeX. У 3-го урока добавляем горизонтальную ветку
+  // от боковой кувшинки «+МОНЕТЫ» (x = 40) до «+ЛУТ» (x = 248).
+  const pathD = useMemo(() => {
+    const nodes = lessons
+      .map((_, index) => {
+        const x = getNodeX(index);
+        const y = 40 + index * 100;
+        return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
+      })
+      .join(' ');
+    const sideBranch = `M 40 ${40 + 2 * 100} H 248`;
+    return lessons.length > 2 ? `${nodes} ${sideBranch}` : nodes;
+  }, [lessons]);
 
   const activeNodeRef = useRef<HTMLButtonElement | null>(null);
 
@@ -118,7 +145,7 @@ export function LessonView() {
           />
 
           <div className="relative mx-auto w-72">
-            {/* Белая пунктирная змейка по центрам кувшинок; координаты считаются из lessons */}
+            {/* Белая пунктирная змейка по центрам кувшинок + ветка наград у 3-го урока */}
             <svg
               aria-hidden="true"
               className="pointer-events-none absolute inset-0 z-0 h-full w-full"
@@ -133,20 +160,46 @@ export function LessonView() {
               />
             </svg>
 
-            <div className="relative flex flex-col items-center gap-y-12">
+            <div className="relative flex flex-col items-center gap-y-5">
               {lessons.map((lesson, index) => {
                 const isCompleted = index < activeIndex;
                 const isActive = index === activeIndex;
                 const isLocked = index > activeIndex;
                 const isClickable = index <= activeIndex;
-                // Чётные узлы уводим влево, нечётные — вправо: получается змейка.
-                const offsetClassName = index % 2 === 0 ? '-translate-x-10' : 'translate-x-10';
 
                 return (
                   <div
                     key={lesson.id}
                     className="relative z-10 flex h-20 w-full items-center justify-center"
                   >
+                    {/* Боковые кувшинки-награды у 3-го урока: слева монеты, справа лут */}
+                    {index === 2 && (
+                      <>
+                        <div className="pointer-events-none absolute left-0 top-1/2 flex -translate-y-1/2 flex-col items-center">
+                          <img
+                            src={nodeCoinsUrl}
+                            alt=""
+                            aria-hidden="true"
+                            className="h-20 w-20 object-contain"
+                          />
+                          <span className="mt-1 whitespace-nowrap font-display text-[11px] leading-none text-[#ffe08a]">
+                            +МОНЕТЫ
+                          </span>
+                        </div>
+                        <div className="pointer-events-none absolute right-0 top-1/2 flex -translate-y-1/2 flex-col items-center">
+                          <img
+                            src={nodeLootUrl}
+                            alt=""
+                            aria-hidden="true"
+                            className="h-20 w-20 object-contain"
+                          />
+                          <span className="mt-1 whitespace-nowrap font-display text-[11px] leading-none text-[#ff9d6e]">
+                            +ЛУТ
+                          </span>
+                        </div>
+                      </>
+                    )}
+
                     <button
                       type="button"
                       ref={isActive ? activeNodeRef : undefined}
@@ -159,7 +212,7 @@ export function LessonView() {
                             ? `${lesson.title}: текущий урок`
                             : `${lesson.title}: урок заблокирован`
                       }
-                      className={`relative h-20 w-20 shrink-0 ${offsetClassName} ${
+                      className={`relative h-20 w-20 shrink-0 ${getNodeOffsetClass(index)} ${
                         isClickable ? 'cursor-pointer' : ''
                       }`}
                     >
@@ -201,36 +254,6 @@ export function LessonView() {
                           />
                         </>
                       )}
-
-                      {/* Боковая ветка «+МОНЕТЫ» у второго урока (только визуал) */}
-                      {index === 1 && (
-                        <div className="pointer-events-none absolute top-1/2 -left-24 flex -translate-y-1/2 flex-col items-center">
-                          <img
-                            src={nodeCoinsUrl}
-                            alt=""
-                            aria-hidden="true"
-                            className="h-20 w-20 object-contain"
-                          />
-                          <span className="mt-1 whitespace-nowrap font-display text-[11px] leading-none text-[#ffe08a]">
-                            +МОНЕТЫ
-                          </span>
-                        </div>
-                      )}
-
-                      {/* Боковая ветка «+ЛУТ» у четвёртого урока (только визуал) */}
-                      {index === 3 && (
-                        <div className="pointer-events-none absolute top-1/2 -right-20 flex -translate-y-1/2 flex-col items-center">
-                          <img
-                            src={nodeLootUrl}
-                            alt=""
-                            aria-hidden="true"
-                            className="h-20 w-20 object-contain"
-                          />
-                          <span className="mt-1 whitespace-nowrap font-display text-[11px] leading-none text-[#ff9d6e]">
-                            +ЛУТ
-                          </span>
-                        </div>
-                      )}
                     </button>
                   </div>
                 );
@@ -241,4 +264,316 @@ export function LessonView() {
       </div>
     </div>
   );
+}
+
+/**
+ * Экран прохождения урока в стиле Duolingo:
+ * реплика питомца -> сборка перевода из чипов -> проверка -> обратная связь -> дальше.
+ * Аудио и голосовой ввод пока недоступны (сервисы-заглушки), кнопки с пометкой «скоро».
+ */
+function LessonSession({ lesson }: { lesson: Lesson }) {
+  const lessons = useLessonStore((state) => state.lessons);
+  const selectedWordIds = useLessonStore((state) => state.selectedWordIds);
+  const status = useLessonStore((state) => state.status);
+  const attempts = useLessonStore((state) => state.attempts);
+  const selectWord = useLessonStore((state) => state.selectWord);
+  const removeWordAt = useLessonStore((state) => state.removeWordAt);
+  const clearAnswer = useLessonStore((state) => state.clearAnswer);
+  const checkAnswer = useLessonStore((state) => state.checkAnswer);
+  const nextLesson = useLessonStore((state) => state.nextLesson);
+  const exitLesson = useLessonStore((state) => state.exitLesson);
+
+  const totalXp = usePetStore((state) => state.totalXp);
+  const petExpression = usePetStore((state) => state.expression);
+  const animationsEnabled = useSettingsStore((state) => state.animationsEnabled);
+  const backToMenu = useUiStore((state) => state.backToMenu);
+
+  const { playSound, vibrate } = useUiFeedback();
+
+  const handleSelectWord = (wordId: string): void => {
+    playSound('tap');
+    selectWord(wordId);
+  };
+
+  const handleRemoveWord = (index: number): void => {
+    vibrate('light');
+    removeWordAt(index);
+  };
+
+  const handleClear = (): void => {
+    playSound('tap');
+    clearAnswer();
+  };
+
+  const handleCheck = (): void => {
+    const isCorrectNow = checkAnswer();
+    playSound(isCorrectNow ? 'correct' : 'wrong');
+    vibrate(isCorrectNow ? 'success' : 'error');
+  };
+
+  const handleNext = (): void => {
+    playSound('tap');
+    nextLesson();
+  };
+
+  const handleRetry = (): void => {
+    playSound('tap');
+    vibrate('light');
+    clearAnswer();
+  };
+
+  const handleExit = (): void => {
+    playSound('tap');
+    exitLesson();
+  };
+
+  const handleExitToMenu = (): void => {
+    playSound('tap');
+    exitLesson();
+    backToMenu();
+  };
+
+  // Все уроки пройдены: lessonStore перевёл сессию в статус completed.
+  if (status === 'completed') {
+    return (
+      <div className="pixel-frame bg-app-card p-5 text-center">
+        <p className="text-5xl leading-none" role="img" aria-label="Радостный питомец">
+          {PET_CONFIG.expressions.happy}
+        </p>
+        <h2 className="mt-3 font-display text-xs leading-relaxed text-app-text">
+          Все уроки пройдены!
+        </h2>
+        <p className="mt-2 font-app text-sm leading-snug text-app-hint">
+          Ты прошёл {lessons.length} из {lessons.length} уроков. Питомец гордится тобой.
+        </p>
+        <p className="pixel-chip mt-3 inline-block bg-app-yellow px-2.5 py-1.5 font-display text-[12px] leading-none text-app-ink">
+          Всего XP: {totalXp}
+        </p>
+        <div className="mt-4 flex flex-col gap-2.5">
+          <PixelButton tone="green" onClick={handleExit} className="w-full">
+            Вернуться к урокам
+          </PixelButton>
+          <PixelButton tone="cream" onClick={handleExitToMenu} className="w-full">
+            В меню
+          </PixelButton>
+        </div>
+      </div>
+    );
+  }
+
+  const lessonNumber = lessons.findIndex((item) => item.id === lesson.id) + 1;
+  const selectedWords = selectedWordIds
+    .map((wordId) => lesson.words.find((word) => word.id === wordId))
+    .filter((word): word is WordToken => word !== undefined);
+  const availableWords = lesson.words.filter((word) => !selectedWordIds.includes(word.id));
+  const isAnswerLocked = status === 'correct' || status === 'wrong';
+  const isCorrect = status === 'correct';
+  const isWrong = status === 'wrong';
+  const petEmoji = isCorrect
+    ? PET_CONFIG.expressions.happy
+    : isWrong
+      ? PET_CONFIG.expressions.sad
+      : PET_CONFIG.expressions[petExpression];
+
+  return (
+    <div className="space-y-3">
+      <header className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <h2 className="font-display text-[13px] leading-relaxed text-app-text">
+            Урок {lessonNumber} из {lessons.length}
+          </h2>
+          <p className="mt-1 truncate font-app text-[14px] text-app-hint">{lesson.title}</p>
+        </div>
+        <span className="pixel-chip shrink-0 bg-app-yellow px-2 py-1.5 font-display text-[12px] leading-none text-app-ink">
+          +{lesson.xpReward} XP
+        </span>
+      </header>
+
+      {/* Карточка питомца с репликой и заданием */}
+      <div className="pixel-frame flex items-start gap-3 bg-app-card p-3">
+        <span
+          className={`text-4xl leading-none ${animationsEnabled ? 'animate-float' : ''}`}
+          role="img"
+          aria-label="Питомец"
+        >
+          {petEmoji}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="pixel-frame-sm bg-app-screen px-3 py-2 font-app text-sm font-semibold leading-snug text-app-ink">
+            {lesson.petPhrase}
+          </p>
+          <p className="mt-1.5 font-app text-[14px] leading-snug text-app-hint">
+            {lesson.instruction}
+          </p>
+        </div>
+      </div>
+
+      {/* Аудио и голос пока недоступны: сервисы-заглушки, кнопки выключены. */}
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          disabled
+          title="Озвучка появится в следующих версиях"
+          className="pixel-frame-sm flex min-h-[52px] flex-wrap items-center justify-center gap-x-1 gap-y-1 bg-app-card px-1.5 py-1.5 text-center font-app text-[14px] font-semibold leading-tight text-app-hint opacity-70"
+        >
+          <span aria-hidden="true">🔊</span> Прослушать
+          <span className="border border-app-ink px-1 py-0.5 font-display text-[12px] uppercase leading-none">
+            скоро
+          </span>
+        </button>
+        <button
+          type="button"
+          disabled
+          title="Голосовой ввод появится в следующих версиях"
+          className="pixel-frame-sm flex min-h-[52px] flex-wrap items-center justify-center gap-x-1 gap-y-1 bg-app-card px-1.5 py-1.5 text-center font-app text-[14px] font-semibold leading-tight text-app-hint opacity-70"
+        >
+          <span aria-hidden="true">🎙️</span> Голосом
+          <span className="border border-app-ink px-1 py-0.5 font-display text-[12px] uppercase leading-none">
+            скоро
+          </span>
+        </button>
+      </div>
+
+      {/* Трей ответа: тап по слову убирает его из ответа */}
+      <div>
+        <p className="mb-1.5 font-display text-[12px] uppercase leading-relaxed text-app-hint">
+          Твой ответ
+        </p>
+        <div className="pixel-frame-sm min-h-[68px] bg-app-screen p-2">
+          {selectedWords.length === 0 ? (
+            <p className="px-1 py-2 font-app text-[14px] text-app-ink">
+              Нажми на слова ниже, чтобы собрать перевод
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              {selectedWords.map((word, index) => (
+                <button
+                  key={`${word.id}-${index}`}
+                  type="button"
+                  disabled={isAnswerLocked}
+                  onClick={() => handleRemoveWord(index)}
+                  aria-label={`Убрать слово «${word.text}»`}
+                  className="pixel-chip flex min-h-[48px] select-none items-center bg-app-card px-2.5 py-1.5 font-app text-sm text-app-text disabled:opacity-70"
+                >
+                  {word.text}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Банк слов: тап добавляет слово в ответ */}
+      <div>
+        <p className="mb-1.5 font-display text-[12px] uppercase leading-relaxed text-app-hint">
+          Банк слов
+        </p>
+        <div className="flex flex-wrap gap-1.5">
+          {availableWords.map((word) => (
+            <button
+              key={word.id}
+              type="button"
+              disabled={isAnswerLocked}
+              onClick={() => handleSelectWord(word.id)}
+              className="pixel-chip flex min-h-[48px] select-none items-center bg-app-card px-3 py-1.5 font-app text-sm font-semibold text-app-text disabled:opacity-50"
+            >
+              {word.text}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Обратная связь после проверки */}
+      {isCorrect && (
+        <div role="status" className="pixel-frame bg-app-accent-soft px-3 py-2.5">
+          <p className="inline-block bg-app-accent px-2 py-1 font-display text-[12px] leading-none text-app-accent-contrast">
+            Верно! 🎉
+          </p>
+          <p className="mt-1.5 font-app text-xs text-app-hint">+{lesson.xpReward} XP питомцу</p>
+          <p className="mt-1 font-app text-xs text-app-text">
+            Правильный перевод: {lesson.translation}
+          </p>
+        </div>
+      )}
+      {isWrong && (
+        <div role="status" className="pixel-frame bg-app-card px-3 py-2.5">
+          <p className="inline-block bg-app-danger px-2 py-1 font-display text-[12px] leading-none text-app-ink">
+            Пока неверно
+          </p>
+          <p className="mt-1.5 font-app text-xs text-app-hint">
+            Попытка {attempts}. Попробуй ещё раз или посмотри правильный перевод.
+          </p>
+          <p className="mt-1 font-app text-xs text-app-text">
+            Правильный перевод: {lesson.translation}
+          </p>
+        </div>
+      )}
+
+      {/* Управление: проверить / очистить либо дальше / повторить */}
+      {isAnswerLocked ? (
+        <div className="space-y-2">
+          {/* При неверном ответе «Дальше» не показываем: урок нельзя пропустить,
+              нужно собрать ответ заново. */}
+          {isCorrect && (
+            <PixelButton tone="green" onClick={handleNext} className="w-full">
+              <span className="flex items-center justify-center gap-1.5">
+                Дальше
+                <span
+                  aria-hidden="true"
+                  className="h-0 w-0 shrink-0 border-y-[5px] border-l-[7px] border-y-transparent border-l-current"
+                />
+              </span>
+            </PixelButton>
+          )}
+          {isWrong && (
+            <PixelButton tone="yellow" onClick={handleRetry} className="w-full">
+              Попробовать снова
+            </PixelButton>
+          )}
+        </div>
+      ) : (
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={handleClear}
+            disabled={selectedWords.length === 0}
+            className="pixel-btn flex min-h-[52px] flex-1 select-none items-center justify-center bg-app-card px-2 font-app text-sm font-bold text-app-text disabled:opacity-50"
+          >
+            Очистить
+          </button>
+          <button
+            type="button"
+            onClick={handleCheck}
+            disabled={selectedWords.length === 0}
+            className="pixel-btn flex min-h-[52px] flex-[2] select-none items-center justify-center bg-app-accent px-2 font-app text-base font-bold text-app-accent-contrast disabled:opacity-50"
+          >
+            Проверить
+          </button>
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={handleExit}
+        className="flex min-h-[44px] w-full select-none items-center justify-center gap-1.5 font-app text-xs font-semibold text-app-hint underline underline-offset-2"
+      >
+        <span
+          aria-hidden="true"
+          className="h-0 w-0 shrink-0 border-y-[5px] border-r-[7px] border-y-transparent border-r-current"
+        />
+        Выйти из урока
+      </button>
+    </div>
+  );
+}
+
+export function LessonView() {
+  const currentLesson = useLessonStore((state) =>
+    state.currentLessonId === null
+      ? undefined
+      : state.lessons.find((lesson) => lesson.id === state.currentLessonId),
+  );
+
+  // Урок запущен — показываем экран прохождения, иначе — карту болота.
+  return currentLesson === undefined ? <SwampMap /> : <LessonSession lesson={currentLesson} />;
 }
