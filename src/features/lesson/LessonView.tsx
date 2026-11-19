@@ -9,6 +9,7 @@ import reedsUrl from '@/assets/icons/reeds.png';
 import starGrayUrl from '@/assets/icons/star-gray.png';
 import starYellowUrl from '@/assets/icons/star-yellow.png';
 import swampBgUrl from '@/assets/icons/swamp-bg.jpg';
+import { useUiStore } from '@/store';
 
 /**
  * Статичная карта главы в болотном стиле: заголовок, змейка из пяти узлов
@@ -31,7 +32,7 @@ function StarRow({ filled }: { filled: number }) {
           key={index}
           src={index < filled ? starYellowUrl : starGrayUrl}
           alt=""
-          className="h-7 w-7 shrink-0"
+          className="h-5 w-5 shrink-0 object-contain"
         />
       ))}
     </div>
@@ -53,6 +54,7 @@ export function LessonView() {
           <button
             type="button"
             aria-label="Назад"
+            onClick={() => useUiStore.getState().backToMenu()}
             className="pixel-frame-sm flex h-11 w-11 shrink-0 select-none items-center justify-center bg-[#3f6b38] pb-1 font-display text-2xl leading-none text-[#f2edb4]"
           >
             ‹
@@ -62,13 +64,8 @@ export function LessonView() {
           </h1>
         </header>
 
-        {/* Змейка: пунктирная линия-путь и узлы поверх неё */}
-        <div className="relative mx-auto flex w-full max-w-[420px] flex-col items-center gap-y-12 px-4 pb-8 pt-10">
-          <span
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-y-6 left-1/2 z-0 -translate-x-1/2 border-l-4 border-dashed border-[#8fbf9f]/70"
-          />
-
+        {/* Карта: узлы в контейнере фиксированной ширины, чтобы путь не разъезжался на экранах */}
+        <div className="relative mx-auto w-full max-w-[420px] px-4 pb-8 pt-10">
           {/* Болотные декорации по краям карты */}
           <img
             src={reedsUrl}
@@ -83,78 +80,104 @@ export function LessonView() {
             className="pointer-events-none absolute bottom-6 right-0 z-0 h-24 w-auto -scale-x-100 opacity-90"
           />
 
-          {/* 1. Пройденный урок: три жёлтые звезды */}
-          <div className="relative z-10 flex w-full justify-center">
-            <div
-              className="relative -translate-x-10"
-              role="img"
-              aria-label="Пройденный урок: 3 из 3 звёзд"
+          <div className="relative mx-auto w-72">
+            {/* Белая пунктирная змейка: центры кувшинок сверху вниз и ветки к наградам */}
+            <svg
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 z-0 h-full w-full"
             >
-              <StarRow filled={3} />
-              <img src={lilyDefaultUrl} alt="" className="h-[92px] w-auto" />
-            </div>
-          </div>
-
-          {/* 2. Пройденный урок: две звезды из трёх */}
-          <div className="relative z-10 flex w-full justify-center">
-            <div
-              className="relative translate-x-10"
-              role="img"
-              aria-label="Пройденный урок: 2 из 3 звёзд"
-            >
-              <StarRow filled={2} />
-              <img src={lilyDefaultUrl} alt="" className="h-[92px] w-auto" />
-            </div>
-          </div>
-
-          {/* 3. Текущий урок: лягушка на активной кувшинке и ответвления по бокам */}
-          <div className="relative z-10 flex w-full items-center justify-center">
-            <div className="absolute left-0 top-1/2 flex -translate-y-1/2 flex-col items-center">
-              <img src={nodeCoinsUrl} alt="" aria-hidden="true" className="h-16 w-auto" />
-              <span className="mt-1 whitespace-nowrap font-display text-[11px] leading-none text-[#ffe08a]">
-                +МОНЕТЫ
-              </span>
-            </div>
-
-            <div className="relative" role="img" aria-label="Текущий урок: лягушка на кувшинке">
-              <img src={lilyActiveUrl} alt="" className="h-[104px] w-auto" />
-              {/* Лягушка — готовый спрайт питомца с целым масштабом 4, чтобы пиксели остались жёсткими. */}
-              <div className="pointer-events-none absolute inset-x-0 top-1 flex justify-center">
-                <div
-                  aria-hidden="true"
-                  className="sprite-frame pixelated"
-                  style={getFrogFrameStyle('idle', FROG_IDLE_FRAME, 4)}
-                />
-              </div>
-            </div>
-
-            <div className="absolute right-0 top-1/2 flex -translate-y-1/2 flex-col items-center">
-              <img src={nodeLootUrl} alt="" aria-hidden="true" className="h-16 w-auto" />
-              <span className="mt-1 whitespace-nowrap font-display text-[11px] leading-none text-[#ff9d6e]">
-                +ЛУТ
-              </span>
-            </div>
-          </div>
-
-          {/* 4. Следующий открытый урок с номером, без замка */}
-          <div className="relative z-10 flex w-full justify-center">
-            <div className="relative -translate-x-10" role="img" aria-label="Следующий урок: 4">
-              <img src={lilyDefaultUrl} alt="" className="h-[92px] w-auto" />
-              <span className="absolute inset-0 flex items-center justify-center font-display text-[26px] leading-none text-[#26402a]">
-                4
-              </span>
-            </div>
-          </div>
-
-          {/* 5. Заблокированный урок */}
-          <div className="relative z-10 flex w-full justify-center">
-            <div className="relative translate-x-10" role="img" aria-label="Урок заблокирован">
-              <img src={lilyLockedUrl} alt="" className="h-[92px] w-auto" />
-              <img
-                src={lockUrl}
-                alt=""
-                className="absolute left-1/2 top-1/2 h-12 w-auto -translate-x-1/2 -translate-y-1/2"
+              <path
+                d="M 104 40 L 184 168 L 144 296 L 104 424 L 184 552 M 144 296 H 40 M 144 296 H 248"
+                fill="none"
+                stroke="white"
+                strokeWidth="4"
+                strokeDasharray="6,6"
+                strokeLinecap="round"
               />
+            </svg>
+
+            <div className="relative flex flex-col items-center gap-y-12">
+              {/* 1. Пройденный урок: три жёлтые звезды */}
+              <div className="relative z-10 flex w-full justify-center">
+                <div
+                  className="relative -translate-x-10"
+                  role="img"
+                  aria-label="Пройденный урок: 3 из 3 звёзд"
+                >
+                  <StarRow filled={3} />
+                  <img src={lilyDefaultUrl} alt="" className="h-20 w-20 object-contain" />
+                </div>
+              </div>
+
+              {/* 2. Пройденный урок: две звезды из трёх */}
+              <div className="relative z-10 flex w-full justify-center">
+                <div
+                  className="relative translate-x-10"
+                  role="img"
+                  aria-label="Пройденный урок: 2 из 3 звёзд"
+                >
+                  <StarRow filled={2} />
+                  <img src={lilyDefaultUrl} alt="" className="h-20 w-20 object-contain" />
+                </div>
+              </div>
+
+              {/* 3. Текущий урок: лягушка на активной кувшинке и ответвления по бокам */}
+              <div className="relative z-10 flex w-full items-center justify-center">
+                <div className="absolute left-0 top-1/2 flex -translate-y-1/2 flex-col items-center">
+                  <img
+                    src={nodeCoinsUrl}
+                    alt=""
+                    aria-hidden="true"
+                    className="h-20 w-20 object-contain"
+                  />
+                  <span className="mt-1 whitespace-nowrap font-display text-[11px] leading-none text-[#ffe08a]">
+                    +МОНЕТЫ
+                  </span>
+                </div>
+
+                <div className="relative" role="img" aria-label="Текущий урок: лягушка на кувшинке">
+                  <img src={lilyActiveUrl} alt="" className="h-20 w-20 object-contain" />
+                  {/* Лягушка — готовый спрайт питомца с целым масштабом 4, чтобы пиксели остались жёсткими. */}
+                  <div className="pointer-events-none absolute inset-x-0 top-1 flex justify-center">
+                    <div
+                      aria-hidden="true"
+                      className="sprite-frame pixelated"
+                      style={getFrogFrameStyle('idle', FROG_IDLE_FRAME, 4)}
+                    />
+                  </div>
+                </div>
+
+                <div className="absolute right-0 top-1/2 flex -translate-y-1/2 flex-col items-center">
+                  <img
+                    src={nodeLootUrl}
+                    alt=""
+                    aria-hidden="true"
+                    className="h-20 w-20 object-contain"
+                  />
+                  <span className="mt-1 whitespace-nowrap font-display text-[11px] leading-none text-[#ff9d6e]">
+                    +ЛУТ
+                  </span>
+                </div>
+              </div>
+
+              {/* 4. Следующий открытый урок: только кувшинка, без замка */}
+              <div className="relative z-10 flex w-full justify-center">
+                <div className="relative -translate-x-10" role="img" aria-label="Следующий урок">
+                  <img src={lilyDefaultUrl} alt="" className="h-20 w-20 object-contain" />
+                </div>
+              </div>
+
+              {/* 5. Заблокированный урок */}
+              <div className="relative z-10 flex w-full justify-center">
+                <div className="relative translate-x-10" role="img" aria-label="Урок заблокирован">
+                  <img src={lilyLockedUrl} alt="" className="h-20 w-20 object-contain" />
+                  <img
+                    src={lockUrl}
+                    alt=""
+                    className="absolute left-1/2 top-1/2 h-12 w-auto -translate-x-1/2 -translate-y-1/2"
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </div>
