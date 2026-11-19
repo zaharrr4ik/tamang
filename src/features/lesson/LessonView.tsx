@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useRef } from 'react';
 import { FROG_IDLE_FRAME, getFrogFrameStyle } from '@/components/pet/petSprites';
 import lilyActiveUrl from '@/assets/icons/lily-active.png';
 import lilyDefaultUrl from '@/assets/icons/lily-default.png';
@@ -9,13 +10,17 @@ import reedsUrl from '@/assets/icons/reeds.png';
 import starGrayUrl from '@/assets/icons/star-gray.png';
 import starYellowUrl from '@/assets/icons/star-yellow.png';
 import swampBgUrl from '@/assets/icons/swamp-bg.jpg';
-import { useUiStore } from '@/store';
+import { useLessonStore, useUiStore } from '@/store';
 
 /**
- * Статичная карта главы в болотном стиле: заголовок, змейка из пяти узлов
- * и боковые ответвления «+МОНЕТЫ» / «+ЛУТ».
+ * Карта главы в болотном стиле: заголовок и зигзагообразная змейка узлов,
+ * построенная по реальному прогрессу уроков из lessonStore.
  *
- * Пока это только вёрстка: прогресс, переходы и lessonStore не подключены.
+ * Пройденные уроки (index < activeIndex) — кувшинка с тремя звёздами,
+ * текущий (index === activeIndex) — активная кувшинка с лягушкой,
+ * остальные (index > activeIndex) — заблокированные кувшинки с замком.
+ * Линия пути считается динамически по тем же координатам, что и узлы.
+ *
  * Экрану нужен полноэкранный слой поверх BottomNav, поэтому контейнер
  * зафиксирован во вьюпорте (fixed inset-0), а подложка прокручивается внутри.
  */
@@ -25,7 +30,7 @@ function StarRow({ filled }: { filled: number }) {
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none absolute -top-8 left-1/2 -ml-1 flex -translate-x-1/2 translate-y-1 items-end gap-1"
+      className="pointer-events-none absolute -top-6 left-1/2 flex -translate-x-1/2 items-end gap-1"
     >
       {[0, 1, 2].map((index) => (
         <img
@@ -40,6 +45,38 @@ function StarRow({ filled }: { filled: number }) {
 }
 
 export function LessonView() {
+  const lessons = useLessonStore((state) => state.lessons);
+  const completedLessonIds = useLessonStore((state) => state.completedLessonIds);
+  const startLesson = useLessonStore((state) => state.startLesson);
+
+  // Первый непройденный урок — текущий. Если все уроки пройдены, findIndex вернёт -1,
+  // и activeIndex становится lessons.length: активного узла нет, все узлы пройдены.
+  const activeIndex = useMemo(() => {
+    const found = lessons.findIndex((lesson) => !completedLessonIds.includes(lesson.id));
+    return found === -1 ? lessons.length : found;
+  }, [lessons, completedLessonIds]);
+
+  // Зигзаг: центры кувшинок по вертикали — 40 + index * 128 (h-20 + gap-y-12),
+  // по горизонтали — 104 для чётных и 184 для нечётных (контейнер w-72 = 288px).
+  const pathD = useMemo(
+    () =>
+      lessons
+        .map((_, index) => {
+          const x = index % 2 === 0 ? 104 : 184;
+          const y = 40 + index * 128;
+          return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
+        })
+        .join(' '),
+    [lessons],
+  );
+
+  const activeNodeRef = useRef<HTMLButtonElement | null>(null);
+
+  // При открытии карты сразу показываем текущий урок, не дожидаясь скролла пользователя.
+  useEffect(() => {
+    activeNodeRef.current?.scrollIntoView({ behavior: 'auto', block: 'center' });
+  }, []);
+
   return (
     <div
       className="fixed inset-0 z-50 overflow-y-auto overscroll-contain bg-[#2f6b5c]"
@@ -81,13 +118,13 @@ export function LessonView() {
           />
 
           <div className="relative mx-auto w-72">
-            {/* Белая пунктирная змейка: центры кувшинок сверху вниз и ветки к наградам */}
+            {/* Белая пунктирная змейка по центрам кувшинок; координаты считаются из lessons */}
             <svg
               aria-hidden="true"
               className="pointer-events-none absolute inset-0 z-0 h-full w-full"
             >
               <path
-                d="M 104 40 L 184 168 L 144 296 L 104 424 L 184 552 M 144 296 H 40 M 144 296 H 248"
+                d={pathD}
                 fill="none"
                 stroke="white"
                 strokeWidth="4"
@@ -97,87 +134,107 @@ export function LessonView() {
             </svg>
 
             <div className="relative flex flex-col items-center gap-y-12">
-              {/* 1. Пройденный урок: три жёлтые звезды */}
-              <div className="relative z-10 flex w-full justify-center">
-                <div
-                  className="relative -translate-x-10"
-                  role="img"
-                  aria-label="Пройденный урок: 3 из 3 звёзд"
-                >
-                  <StarRow filled={3} />
-                  <img src={lilyDefaultUrl} alt="" className="h-20 w-20 object-contain" />
-                </div>
-              </div>
+              {lessons.map((lesson, index) => {
+                const isCompleted = index < activeIndex;
+                const isActive = index === activeIndex;
+                const isLocked = index > activeIndex;
+                const isClickable = index <= activeIndex;
+                // Чётные узлы уводим влево, нечётные — вправо: получается змейка.
+                const offsetClassName = index % 2 === 0 ? '-translate-x-10' : 'translate-x-10';
 
-              {/* 2. Пройденный урок: две звезды из трёх */}
-              <div className="relative z-10 flex w-full justify-center">
-                <div
-                  className="relative translate-x-10"
-                  role="img"
-                  aria-label="Пройденный урок: 2 из 3 звёзд"
-                >
-                  <StarRow filled={2} />
-                  <img src={lilyDefaultUrl} alt="" className="h-20 w-20 object-contain" />
-                </div>
-              </div>
+                return (
+                  <div
+                    key={lesson.id}
+                    className="relative z-10 flex h-20 w-full items-center justify-center"
+                  >
+                    <button
+                      type="button"
+                      ref={isActive ? activeNodeRef : undefined}
+                      disabled={!isClickable}
+                      onClick={isClickable ? () => startLesson(lesson.id) : undefined}
+                      aria-label={
+                        isCompleted
+                          ? `${lesson.title}: пройден`
+                          : isActive
+                            ? `${lesson.title}: текущий урок`
+                            : `${lesson.title}: урок заблокирован`
+                      }
+                      className={`relative h-20 w-20 shrink-0 ${offsetClassName} ${
+                        isClickable ? 'cursor-pointer' : ''
+                      }`}
+                    >
+                      {/* Пройденный урок: кувшинка и три звезды над ней */}
+                      {isCompleted && (
+                        <>
+                          <StarRow filled={3} />
+                          <img
+                            src={lilyDefaultUrl}
+                            alt=""
+                            className="h-20 w-20 object-contain"
+                          />
+                        </>
+                      )}
 
-              {/* 3. Текущий урок: лягушка на активной кувшинке и ответвления по бокам */}
-              <div className="relative z-10 flex w-full items-center justify-center">
-                <div className="absolute left-0 top-1/2 flex -translate-y-1/2 flex-col items-center">
-                  <img
-                    src={nodeCoinsUrl}
-                    alt=""
-                    aria-hidden="true"
-                    className="h-20 w-20 object-contain"
-                  />
-                  <span className="mt-1 whitespace-nowrap font-display text-[11px] leading-none text-[#ffe08a]">
-                    +МОНЕТЫ
-                  </span>
-                </div>
+                      {/* Текущий урок: активная кувшинка, лягушка строго по центру */}
+                      {isActive && (
+                        <>
+                          <img src={lilyActiveUrl} alt="" className="h-20 w-20 object-contain" />
+                          {/* Лягушка — готовый спрайт питомца: масштаб 3 (84×48 px). */}
+                          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                            <div
+                              aria-hidden="true"
+                              className="sprite-frame pixelated"
+                              style={getFrogFrameStyle('idle', FROG_IDLE_FRAME, 3)}
+                            />
+                          </div>
+                        </>
+                      )}
 
-                <div className="relative" role="img" aria-label="Текущий урок: лягушка на кувшинке">
-                  <img src={lilyActiveUrl} alt="" className="h-20 w-20 object-contain" />
-                  {/* Лягушка — готовый спрайт питомца: масштаб 3 (84×48 px), чтобы поместиться на кувшинке 80×80. */}
-                  <div className="pointer-events-none absolute inset-x-0 top-1 flex justify-center">
-                    <div
-                      aria-hidden="true"
-                      className="sprite-frame pixelated -translate-x-2 -translate-y-2"
-                      style={getFrogFrameStyle('idle', FROG_IDLE_FRAME, 3)}
-                    />
+                      {/* Заблокированный урок: закрытая кувшинка и замок по центру */}
+                      {isLocked && (
+                        <>
+                          <img src={lilyLockedUrl} alt="" className="h-20 w-20 object-contain" />
+                          <img
+                            src={lockUrl}
+                            alt=""
+                            className="absolute left-1/2 top-1/2 h-12 w-auto -translate-x-1/2 -translate-y-1/2"
+                          />
+                        </>
+                      )}
+
+                      {/* Боковая ветка «+МОНЕТЫ» у второго урока (только визуал) */}
+                      {index === 1 && (
+                        <div className="pointer-events-none absolute top-1/2 -left-24 flex -translate-y-1/2 flex-col items-center">
+                          <img
+                            src={nodeCoinsUrl}
+                            alt=""
+                            aria-hidden="true"
+                            className="h-20 w-20 object-contain"
+                          />
+                          <span className="mt-1 whitespace-nowrap font-display text-[11px] leading-none text-[#ffe08a]">
+                            +МОНЕТЫ
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Боковая ветка «+ЛУТ» у четвёртого урока (только визуал) */}
+                      {index === 3 && (
+                        <div className="pointer-events-none absolute top-1/2 -right-20 flex -translate-y-1/2 flex-col items-center">
+                          <img
+                            src={nodeLootUrl}
+                            alt=""
+                            aria-hidden="true"
+                            className="h-20 w-20 object-contain"
+                          />
+                          <span className="mt-1 whitespace-nowrap font-display text-[11px] leading-none text-[#ff9d6e]">
+                            +ЛУТ
+                          </span>
+                        </div>
+                      )}
+                    </button>
                   </div>
-                </div>
-
-                <div className="absolute right-0 top-1/2 flex -translate-y-1/2 flex-col items-center">
-                  <img
-                    src={nodeLootUrl}
-                    alt=""
-                    aria-hidden="true"
-                    className="h-20 w-20 object-contain"
-                  />
-                  <span className="mt-1 whitespace-nowrap font-display text-[11px] leading-none text-[#ff9d6e]">
-                    +ЛУТ
-                  </span>
-                </div>
-              </div>
-
-              {/* 4. Следующий открытый урок: только кувшинка, без замка */}
-              <div className="relative z-10 flex w-full justify-center">
-                <div className="relative -translate-x-10" role="img" aria-label="Следующий урок">
-                  <img src={lilyDefaultUrl} alt="" className="h-20 w-20 object-contain" />
-                </div>
-              </div>
-
-              {/* 5. Заблокированный урок */}
-              <div className="relative z-10 flex w-full justify-center">
-                <div className="relative translate-x-10" role="img" aria-label="Урок заблокирован">
-                  <img src={lilyLockedUrl} alt="" className="h-20 w-20 object-contain" />
-                  <img
-                    src={lockUrl}
-                    alt=""
-                    className="absolute left-1/2 top-1/2 h-12 w-auto -translate-x-1/2 -translate-y-1/2"
-                  />
-                </div>
-              </div>
+                );
+              })}
             </div>
           </div>
         </div>
