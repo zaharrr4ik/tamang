@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { Fragment, useEffect, useMemo, useRef } from 'react';
 import { useUiFeedback } from '@/components/hooks/useUiFeedback';
 import { FROG_IDLE_FRAME, getFrogFrameStyle } from '@/components/pet/petSprites';
 import { PixelButton } from '@/components/ui/PixelButton';
@@ -33,7 +33,7 @@ function StarRow({ filled }: { filled: number }) {
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none absolute -top-6 left-1/2 flex -translate-x-1/2 items-end gap-1"
+      className="pointer-events-none absolute -top-4 left-1/2 flex w-max -translate-x-[55%] items-end gap-1"
     >
       {[0, 1, 2].map((index) => (
         <img
@@ -89,7 +89,8 @@ function SwampMap() {
     const nodes = lessons
       .map((_, index) => {
         const x = getNodeX(index);
-        const y = 40 + index * 100;
+        const chapterOffset = index > 3 ? 84 : 0;
+        const y = 40 + index * 100 + chapterOffset;
         return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
       })
       .join(' ');
@@ -168,94 +169,107 @@ function SwampMap() {
                 const isClickable = index <= activeIndex;
 
                 return (
-                  <div
-                    key={lesson.id}
-                    className="relative z-10 flex h-20 w-full items-center justify-center"
-                  >
-                    {/* Боковые кувшинки-награды у 3-го урока: слева монеты, справа лут */}
-                    {index === 2 && (
-                      <>
-                        <div className="pointer-events-none absolute left-0 top-1/2 flex -translate-y-1/2 flex-col items-center">
-                          <img
-                            src={nodeCoinsUrl}
-                            alt=""
-                            aria-hidden="true"
-                            className="h-20 w-20 object-contain"
-                          />
-                          <span className="mt-1 whitespace-nowrap font-display text-[11px] leading-none text-[#ffe08a]">
-                            +МОНЕТЫ
-                          </span>
-                        </div>
-                        <div className="pointer-events-none absolute right-0 top-1/2 flex -translate-y-1/2 flex-col items-center">
-                          <img
-                            src={nodeLootUrl}
-                            alt=""
-                            aria-hidden="true"
-                            className="h-20 w-20 object-contain"
-                          />
-                          <span className="mt-1 whitespace-nowrap font-display text-[11px] leading-none text-[#ff9d6e]">
-                            +ЛУТ
-                          </span>
-                        </div>
-                      </>
-                    )}
-
-                    <button
-                      type="button"
-                      ref={isActive ? activeNodeRef : undefined}
-                      disabled={!isClickable}
-                      onClick={isClickable ? () => startLesson(lesson.id) : undefined}
-                      aria-label={
-                        isCompleted
-                          ? `${lesson.title}: пройден`
-                          : isActive
-                            ? `${lesson.title}: текущий урок`
-                            : `${lesson.title}: урок заблокирован`
-                      }
-                      className={`relative h-20 w-20 shrink-0 ${getNodeOffsetClass(index)} ${
-                        isClickable ? 'cursor-pointer' : ''
-                      }`}
-                    >
-                      {/* Пройденный урок: кувшинка и три звезды над ней */}
-                      {isCompleted && (
+                  <Fragment key={lesson.id}>
+                    <div className="relative z-10 flex h-20 w-full items-center justify-center">
+                      {/* Боковые кувшинки-награды у 3-го урока: слева монеты, справа лут */}
+                      {index === 2 && (
                         <>
-                          <StarRow filled={3} />
-                          <img
-                            src={lilyDefaultUrl}
-                            alt=""
-                            className="h-20 w-20 object-contain"
-                          />
-                        </>
-                      )}
-
-                      {/* Текущий урок: активная кувшинка, лягушка строго по центру */}
-                      {isActive && (
-                        <>
-                          <img src={lilyActiveUrl} alt="" className="h-20 w-20 object-contain" />
-                          {/* Лягушка — готовый спрайт питомца: масштаб 3 (84×48 px). */}
-                          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                            <div
+                          <div className="pointer-events-none absolute left-0 top-1/2 flex -translate-y-1/2 flex-col items-center">
+                            <img
+                              src={nodeCoinsUrl}
+                              alt=""
                               aria-hidden="true"
-                              className="sprite-frame pixelated"
-                              style={getFrogFrameStyle('idle', FROG_IDLE_FRAME, 3)}
+                              className="h-20 w-20 object-contain"
                             />
+                            <span className="mt-1 whitespace-nowrap font-display text-[11px] leading-none text-[#ffe08a]">
+                              +МОНЕТЫ
+                            </span>
+                          </div>
+                          <div className="pointer-events-none absolute right-0 top-1/2 flex -translate-y-1/2 flex-col items-center">
+                            <img
+                              src={nodeLootUrl}
+                              alt=""
+                              aria-hidden="true"
+                              className="h-20 w-20 object-contain"
+                            />
+                            <span className="mt-1 whitespace-nowrap font-display text-[11px] leading-none text-[#ff9d6e]">
+                              +ЛУТ
+                            </span>
                           </div>
                         </>
                       )}
 
-                      {/* Заблокированный урок: закрытая кувшинка и замок по центру */}
-                      {isLocked && (
-                        <>
-                          <img src={lilyLockedUrl} alt="" className="h-20 w-20 object-contain" />
-                          <img
-                            src={lockUrl}
-                            alt=""
-                            className="absolute left-1/2 top-1/2 h-12 w-auto -translate-x-1/2 -translate-y-1/2"
-                          />
-                        </>
-                      )}
-                    </button>
-                  </div>
+                      <button
+                        type="button"
+                        ref={isActive ? activeNodeRef : undefined}
+                        disabled={!isClickable}
+                        onClick={isClickable ? () => startLesson(lesson.id) : undefined}
+                        aria-label={
+                          isCompleted
+                            ? `${lesson.title}: пройден`
+                            : isActive
+                              ? `${lesson.title}: текущий урок`
+                              : `${lesson.title}: урок заблокирован`
+                        }
+                        className={`relative h-20 w-20 shrink-0 ${getNodeOffsetClass(index)} ${
+                          isClickable ? 'cursor-pointer' : ''
+                        }`}
+                      >
+                        {/* Пройденный урок: кувшинка и три звезды над ней */}
+                        {isCompleted && (
+                          <>
+                            <StarRow filled={3} />
+                            <img
+                              src={lilyDefaultUrl}
+                              alt=""
+                              className="h-20 w-20 object-contain"
+                            />
+                          </>
+                        )}
+
+                        {/* Текущий урок: активная кувшинка, лягушка строго по центру */}
+                        {isActive && (
+                          <>
+                            <img
+                              src={lilyActiveUrl}
+                              alt=""
+                              className="h-20 w-20 object-contain"
+                            />
+                            {/* Лягушка — готовый спрайт питомца: масштаб 3 (84×48 px). */}
+                            <div className="pointer-events-none absolute inset-0 flex -translate-y-2 items-center justify-center">
+                              <div
+                                aria-hidden="true"
+                                className="sprite-frame pixelated"
+                                style={getFrogFrameStyle('idle', FROG_IDLE_FRAME, 3)}
+                              />
+                            </div>
+                          </>
+                        )}
+
+                        {/* Заблокированный урок: закрытая кувшинка и замок по центру */}
+                        {isLocked && (
+                          <>
+                            <img src={lilyLockedUrl} alt="" className="h-20 w-20 object-contain" />
+                            <img
+                              src={lockUrl}
+                              alt=""
+                              className="absolute left-1/2 top-1/2 h-12 w-auto -translate-x-1/2 -translate-y-1/2"
+                            />
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    {index === 3 && (
+                      <div className="relative z-10 flex h-16 w-full items-center justify-center gap-2">
+                        <div className="h-0.5 flex-1 border-t-2 border-dashed border-white/40" />
+                        <span className="pixel-chip bg-app-panel px-2 py-1.5 font-display text-[11px] uppercase text-app-panel-text">
+                          Глава 2: Путешествия
+                        </span>
+                        <div className="h-0.5 flex-1 border-t-2 border-dashed border-white/40" />
+                      </div>
+                    )}
+                  </Fragment>
                 );
               })}
             </div>
