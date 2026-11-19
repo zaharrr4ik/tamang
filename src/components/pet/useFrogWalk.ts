@@ -51,18 +51,19 @@ const WALK_SPEED_X_MAX = 10;
 const WALK_SPEED_Y_MIN = 4;
 const WALK_SPEED_Y_MAX = 7;
 
-/** Пауза после прихода к цели, мс: 2500–12000, в основном 4000–9000. */
-const IDLE_PAUSE_MIN = 2500;
-const IDLE_PAUSE_MAX = 12000;
-const IDLE_PAUSE_COMMON_MIN = 4000;
-const IDLE_PAUSE_COMMON_MAX = 9000;
+/** Пауза после прихода к цели, мс: 1200–3000, в основном 1500–2500. */
+const IDLE_PAUSE_MIN = 1200;
+const IDLE_PAUSE_MAX = 3000;
+const IDLE_PAUSE_COMMON_MIN = 1500;
+const IDLE_PAUSE_COMMON_MAX = 2500;
 const IDLE_PAUSE_COMMON_CHANCE = 0.7;
 
 /**
  * Вероятность, что по завершении паузы питомец выберет новую цель. Иначе он
- * остаётся стоять ещё одну паузу — так он заметно меньше ходит.
+ * остаётся стоять ещё одну паузу. 0.75 — простой заметно короче, питомец
+ * больше ходит, но всё же иногда стоит две паузы подряд.
  */
-const WALK_CHANCE = 0.5;
+const WALK_CHANCE = 0.75;
 
 /** Доля целей в средней трети области: питомец тяготеет к центру. */
 const GOAL_CENTER_BIAS = 0.7;
@@ -83,6 +84,10 @@ const TURN_BEHIND_MIN_DX = 8;
 /** Амплитуда и длина «шага» при ходьбе, px: лёгкое покачивание корпуса. */
 const WALK_BOB_PX = 2;
 const WALK_BOB_PERIOD_PX = 16;
+
+/** Покачивание в покое мягче шага: доля амплитуды и период одного цикла, с. */
+const IDLE_BOB_SCALE = 0.6;
+const IDLE_BOB_PERIOD_S = 2.6;
 
 /** Состояние слоя анимации. */
 type FrogMode = 'walk' | 'held' | 'lifted' | 'hop' | 'falling' | 'landing';
@@ -179,7 +184,15 @@ function randomBetween(min: number, max: number): number {
   return min + Math.random() * (max - min);
 }
 
-/** Пауза стоя после прихода к цели: в основном 4–9 с, иногда короче или дольше. */
+/**
+ * Высота покачивания корпуса по фазе «пройденного» пути: одна и та же
+ * синусоида для шага и для покоя (в покое фаза набирается по времени медленнее).
+ */
+function getBobLift(phase: number): number {
+  return Math.abs(Math.sin((phase / WALK_BOB_PERIOD_PX) * Math.PI)) * WALK_BOB_PX;
+}
+
+/** Пауза стоя после прихода к цели: в основном 1.5–2.5 с, иногда 1.2–3 с. */
 function getIdlePauseMs(): number {
   if (Math.random() < IDLE_PAUSE_COMMON_CHANCE) {
     return randomBetween(IDLE_PAUSE_COMMON_MIN, IDLE_PAUSE_COMMON_MAX);
@@ -204,9 +217,9 @@ function pickCenterBiased(min: number, max: number): number {
 
 /**
  * Блуждание питомца по земле: медленная ходьба к случайной цели со смещением
- * к центру области, паузы на статичном надутом idle-кадре (FROG_IDLE_FRAME),
- * перенос указателем, падение и приземление. Позиция задаётся базовой линией
- * (низ спрайта — лапки) и пишется напрямую в DOM (transform/opacity), чтобы
+ * к центру области, паузы на idle-кадре (FROG_IDLE_FRAME) с плавным покачиванием
+ * корпуса, перенос указателем, падение и приземление. Позиция задаётся базовой
+ * линией (низ спрайта — лапки) и пишется напрямую в DOM (transform/opacity), чтобы
  * rAF-цикл не вызывал ре-рендеров React; кадр спрайта обновляется стейтом
  * только при реальной смене кадра.
  */
@@ -406,12 +419,13 @@ export function useFrogWalk({
     [applySprite, getWalkBounds],
   );
 
-  /** Приход к цели: встаём на фиксированный idle-кадр и ждём 2.5–12 с до новой цели. */
+  /** Приход к цели: встаём на фиксированный idle-кадр и ждём 1.2–3 с до новой цели. */
   const arriveAtGoal = useCallback(
     (now: number): void => {
       xRef.current = clampX(goalRef.current.x);
       baselineYRef.current = clampBaseline(goalRef.current.baselineY);
       liftRef.current = 0;
+      bobPhaseRef.current = 0;
       walkPhaseRef.current = 'idle';
       idleUntilRef.current = now + getIdlePauseMs();
       applySprite({ sheet: 'idle', frame: FROG_IDLE_FRAME, facing: facingRef.current.value });
@@ -446,9 +460,13 @@ export function useFrogWalk({
             });
           }
           if (walkPhaseRef.current === 'idle') {
-            // Стоим на месте до конца паузы. По её завершении с вероятностью
-            // WALK_CHANCE выбираем новую цель, иначе остаёмся стоять ещё паузу.
-            liftRef.current = 0;
+            // Стоим на месте до конца паузы, плавно покачивая корпус: та же
+            // синусоида, что при шаге, но амплитуда ниже, а фаза набирается
+            // по времени с периодом IDLE_BOB_PERIOD_S (реже и мягче шага).
+            // По завершении паузы с вероятностью WALK_CHANCE выбираем новую
+            // цель, иначе остаёмся стоять ещё паузу.
+            bobPhaseRef.current += (WALK_BOB_PERIOD_PX * dt) / IDLE_BOB_PERIOD_S;
+            liftRef.current = getBobLift(bobPhaseRef.current) * IDLE_BOB_SCALE;
             if (now >= idleUntilRef.current) {
               if (Math.random() < WALK_CHANCE) {
                 chooseGoal(now);
@@ -477,8 +495,7 @@ export function useFrogWalk({
           // Лёгкое покачивание корпуса в такт шагам: без него ходьба читается
           // как скольжение (idle-кадр статичный и не меняется).
           bobPhaseRef.current += Math.hypot(stepX, stepY);
-          liftRef.current =
-            Math.abs(Math.sin((bobPhaseRef.current / WALK_BOB_PERIOD_PX) * Math.PI)) * WALK_BOB_PX;
+          liftRef.current = getBobLift(bobPhaseRef.current);
           if (
             Math.abs(goal.x - xRef.current) <= ARRIVE_EPSILON &&
             Math.abs(goal.baselineY - baselineYRef.current) <= ARRIVE_EPSILON
@@ -530,6 +547,8 @@ export function useFrogWalk({
             modeRef.current = 'walk';
             walkPhaseRef.current = 'idle';
             idleUntilRef.current = now + getIdlePauseMs();
+            liftRef.current = 0;
+            bobPhaseRef.current = 0;
             applySprite({
               sheet: 'idle',
               frame: FROG_IDLE_FRAME,
@@ -578,6 +597,7 @@ export function useFrogWalk({
     modeRef.current = 'walk';
     walkPhaseRef.current = 'idle';
     liftRef.current = 0;
+    bobPhaseRef.current = 0;
     turnUntilRef.current = 0;
     idleUntilRef.current = performance.now() + getIdlePauseMs();
     applySprite({ sheet: 'idle', frame: FROG_IDLE_FRAME, facing: facingRef.current.value });
@@ -716,6 +736,7 @@ export function useFrogWalk({
           walkPhaseRef.current = 'idle';
           idleUntilRef.current = performance.now() + getIdlePauseMs();
           liftRef.current = 0;
+          bobPhaseRef.current = 0;
           writeVisual();
           applySprite({
             sheet: 'idle',
@@ -739,6 +760,7 @@ export function useFrogWalk({
       walkPhaseRef.current = 'idle';
       idleUntilRef.current = performance.now() + getIdlePauseMs();
       liftRef.current = 0;
+      bobPhaseRef.current = 0;
       writeVisual();
       applySprite({
         sheet: 'idle',
