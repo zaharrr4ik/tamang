@@ -25,7 +25,7 @@ function StarRow({ filled }: { filled: number }) {
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none absolute -top-8 left-1/2 flex -translate-x-1/2 items-end gap-1"
+      className="pointer-events-none absolute -top-8 left-1/2 -ml-1 flex -translate-x-1/2 translate-y-1 items-end gap-1"
     >
       {[0, 1, 2].map((index) => (
         <img
@@ -137,12 +137,12 @@ export function LessonView() {
 
                 <div className="relative" role="img" aria-label="Текущий урок: лягушка на кувшинке">
                   <img src={lilyActiveUrl} alt="" className="h-20 w-20 object-contain" />
-                  {/* Лягушка — готовый спрайт питомца с целым масштабом 4, чтобы пиксели остались жёсткими. */}
+                  {/* Лягушка — готовый спрайт питомца: масштаб 3 (84×48 px), чтобы поместиться на кувшинке 80×80. */}
                   <div className="pointer-events-none absolute inset-x-0 top-1 flex justify-center">
                     <div
                       aria-hidden="true"
-                      className="sprite-frame pixelated"
-                      style={getFrogFrameStyle('idle', FROG_IDLE_FRAME, 4)}
+                      className="sprite-frame pixelated -translate-x-2 -translate-y-2"
+                      style={getFrogFrameStyle('idle', FROG_IDLE_FRAME, 3)}
                     />
                   </div>
                 </div>
