@@ -287,9 +287,9 @@ function SwampMap() {
  */
 function LessonStage({ children }: { children: ReactNode }) {
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto overscroll-contain bg-[#2f6b5c]">
+    <div className="fixed inset-0 z-50 bg-[#263533]">
       <div
-        className="relative mx-auto flex min-h-screen max-w-md flex-col bg-[length:100%_100%] bg-no-repeat bg-center"
+        className="relative mx-auto flex h-full w-full max-w-md flex-col bg-[length:100%_100%] bg-no-repeat"
         style={{ backgroundImage: `url(${lessBgUrl})` }}
       >
         {children}
@@ -305,7 +305,7 @@ function LessonExitButton({ onClick }: { onClick: () => void }) {
       type="button"
       aria-label="Выйти из урока"
       onClick={onClick}
-      className="pixel-frame-sm absolute left-3 top-3 z-20 flex h-11 w-11 shrink-0 select-none items-center justify-center bg-[#3f6b38] pb-1 font-display text-2xl leading-none text-[#f2edb4]"
+      className="pixel-frame-sm absolute left-4 top-4 z-50 flex h-11 w-11 shrink-0 select-none items-center justify-center bg-[#3f6b38] pb-1 font-display text-2xl leading-none text-[#f2edb4]"
     >
       ✕
     </button>
@@ -412,7 +412,6 @@ function LessonSession({ lesson }: { lesson: Lesson }) {
     );
   }
 
-  const lessonNumber = lessons.findIndex((item) => item.id === lesson.id) + 1;
   const selectedWords = selectedWordIds
     .map((wordId) => lesson.words.find((word) => word.id === wordId))
     .filter((word): word is WordToken => word !== undefined);
@@ -430,17 +429,18 @@ function LessonSession({ lesson }: { lesson: Lesson }) {
     <LessonStage>
       <LessonExitButton onClick={handleExit} />
 
-      {/* Верхняя треть: лягушка на мостике слева и облачко с заданием справа */}
-      <div className="relative z-10 mt-20 flex items-start gap-3 px-3">
-        <div
-          aria-hidden="true"
-          className={`sprite-frame pixelated mt-6 shrink-0 ${
-            animationsEnabled ? 'animate-pixel-bob' : ''
-          }`}
-          style={getFrogFrameStyle('idle', FROG_IDLE_FRAME, 3)}
-        />
+      {/* Крупная лягушка стоит лапками на деревянном мостике слева */}
+      <div
+        aria-hidden="true"
+        className={`sprite-frame pixelated absolute left-[8%] top-[25%] z-20 ${
+          animationsEnabled ? 'animate-pixel-bob' : ''
+        }`}
+        style={getFrogFrameStyle('idle', FROG_IDLE_FRAME, 5)}
+      />
 
-        <div className="pixel-frame relative min-w-0 flex-1 bg-app-screen p-3">
+      {/* Облачко с заданием — в верхнем правом углу, чтобы не перекрывать лягушку */}
+      <div className="absolute right-3 top-3 z-10 w-[52%]">
+        <div className="pixel-frame relative min-w-0 bg-app-screen p-3">
           {/* Хвостик облачка: внешний контур + внутренняя заливка в цвет экрана */}
           <span
             aria-hidden="true"
@@ -460,56 +460,21 @@ function LessonSession({ lesson }: { lesson: Lesson }) {
           <p className="mt-1.5 font-app text-[14px] leading-snug text-app-hint">
             {lesson.instruction}
           </p>
-          <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            <span className="pixel-chip bg-app-yellow px-2 py-1 font-display text-[11px] leading-none text-app-ink">
-              Урок {lessonNumber} из {lessons.length}
-            </span>
-            <span className="pixel-chip bg-app-card px-2 py-1 font-display text-[11px] leading-none text-app-ink">
-              +{lesson.xpReward} XP
-            </span>
-            <span className="min-w-0 truncate font-app text-[13px] text-app-hint">
-              {lesson.title}
-            </span>
-          </div>
+          <p className="mt-2 min-w-0 truncate font-app text-[13px] text-app-hint">
+            {lesson.title}
+          </p>
         </div>
       </div>
 
-      {/* Нижняя зона: механика урока, прижата к низу, чтобы не перекрывать лягушку */}
-      <div className="mt-auto space-y-3 border-t-3 border-app-ink bg-app-bg px-4 pb-4 pt-3">
-      {/* Аудио и голос пока недоступны: сервисы-заглушки, кнопки выключены. */}
-      <div className="grid grid-cols-2 gap-2">
-        <button
-          type="button"
-          disabled
-          title="Озвучка появится в следующих версиях"
-          className="pixel-frame-sm flex min-h-[52px] flex-wrap items-center justify-center gap-x-1 gap-y-1 bg-app-card px-1.5 py-1.5 text-center font-app text-[14px] font-semibold leading-tight text-app-hint opacity-70"
-        >
-          <span aria-hidden="true">🔊</span> Прослушать
-          <span className="border border-app-ink px-1 py-0.5 font-display text-[12px] uppercase leading-none">
-            скоро
-          </span>
-        </button>
-        <button
-          type="button"
-          disabled
-          title="Голосовой ввод появится в следующих версиях"
-          className="pixel-frame-sm flex min-h-[52px] flex-wrap items-center justify-center gap-x-1 gap-y-1 bg-app-card px-1.5 py-1.5 text-center font-app text-[14px] font-semibold leading-tight text-app-hint opacity-70"
-        >
-          <span aria-hidden="true">🎙️</span> Голосом
-          <span className="border border-app-ink px-1 py-0.5 font-display text-[12px] uppercase leading-none">
-            скоро
-          </span>
-        </button>
-      </div>
+      {/* Нижняя зона: механика урока в нижних 60% экрана, фон прозрачный,
+          чтобы были видны светлая часть фона и камыши */}
+      <div className="mt-[42vh] space-y-3 bg-transparent px-4 pb-4 pt-3">
 
       {/* Трей ответа: тап по слову убирает его из ответа */}
       <div>
-        <p className="mb-1.5 font-display text-[12px] uppercase leading-relaxed text-app-hint">
-          Твой ответ
-        </p>
-        <div className="pixel-frame-sm min-h-[68px] bg-app-screen p-2">
+        <div className="pixel-frame-sm min-h-[68px] bg-transparent p-2">
           {selectedWords.length === 0 ? (
-            <p className="px-1 py-2 font-app text-[14px] text-app-ink">
+            <p className="px-1 py-2 font-app text-[14px] text-[#141D1C]">
               Нажми на слова ниже, чтобы собрать перевод
             </p>
           ) : (
@@ -521,7 +486,7 @@ function LessonSession({ lesson }: { lesson: Lesson }) {
                   disabled={isAnswerLocked}
                   onClick={() => handleRemoveWord(index)}
                   aria-label={`Убрать слово «${word.text}»`}
-                  className="pixel-chip flex min-h-[48px] select-none items-center bg-app-card px-2.5 py-1.5 font-app text-sm text-app-text disabled:opacity-70"
+                  className="pixel-chip flex min-h-[48px] select-none items-center bg-app-card px-2.5 py-1.5 font-app text-sm text-[#141D1C] disabled:opacity-70"
                 >
                   {word.text}
                 </button>
@@ -533,9 +498,6 @@ function LessonSession({ lesson }: { lesson: Lesson }) {
 
       {/* Банк слов: тап добавляет слово в ответ */}
       <div>
-        <p className="mb-1.5 font-display text-[12px] uppercase leading-relaxed text-app-hint">
-          Банк слов
-        </p>
         <div className="flex flex-wrap gap-1.5">
           {availableWords.map((word) => (
             <button
@@ -543,7 +505,7 @@ function LessonSession({ lesson }: { lesson: Lesson }) {
               type="button"
               disabled={isAnswerLocked}
               onClick={() => handleSelectWord(word.id)}
-              className="pixel-chip flex min-h-[48px] select-none items-center bg-app-card px-3 py-1.5 font-app text-sm font-semibold text-app-text disabled:opacity-50"
+              className="pixel-chip flex min-h-[48px] select-none items-center bg-app-card px-3 py-1.5 font-app text-sm font-semibold text-[#141D1C] disabled:opacity-50"
             >
               {word.text}
             </button>
@@ -619,18 +581,6 @@ function LessonSession({ lesson }: { lesson: Lesson }) {
           </button>
         </div>
       )}
-
-      <button
-        type="button"
-        onClick={handleExit}
-        className="flex min-h-[44px] w-full select-none items-center justify-center gap-1.5 font-app text-xs font-semibold text-app-hint underline underline-offset-2"
-      >
-        <span
-          aria-hidden="true"
-          className="h-0 w-0 shrink-0 border-y-[5px] border-r-[7px] border-y-transparent border-r-current"
-        />
-        Выйти из урока
-      </button>
       </div>
     </LessonStage>
   );
