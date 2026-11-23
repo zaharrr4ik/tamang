@@ -1,8 +1,9 @@
-import { Fragment, useEffect, useMemo, useRef } from 'react';
+import { Fragment, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { useUiFeedback } from '@/components/hooks/useUiFeedback';
 import { FROG_IDLE_FRAME, getFrogFrameStyle } from '@/components/pet/petSprites';
 import { PixelButton } from '@/components/ui/PixelButton';
 import { PET_CONFIG } from '@/data/petConfig';
+import lessBgUrl from '@/assets/icons/less.png';
 import lilyActiveUrl from '@/assets/icons/lily-active.png';
 import lilyDefaultUrl from '@/assets/icons/lily-default.png';
 import lilyLockedUrl from '@/assets/icons/lily-locked.png';
@@ -281,6 +282,37 @@ function SwampMap() {
 }
 
 /**
+ * Общая сцена экрана урока: фон с мостиком на весь экран.
+ * Внутри — flex-колонка, чтобы рабочую зону можно было прижать к низу (mt-auto).
+ */
+function LessonStage({ children }: { children: ReactNode }) {
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto overscroll-contain bg-[#2f6b5c]">
+      <div
+        className="relative mx-auto flex min-h-screen max-w-md flex-col bg-[length:100%_100%] bg-no-repeat bg-center"
+        style={{ backgroundImage: `url(${lessBgUrl})` }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/** Кнопка выхода из урока: стиль кнопки «Назад» с карты, крестик в левом верхнем углу. */
+function LessonExitButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      aria-label="Выйти из урока"
+      onClick={onClick}
+      className="pixel-frame-sm absolute left-3 top-3 z-20 flex h-11 w-11 shrink-0 select-none items-center justify-center bg-[#3f6b38] pb-1 font-display text-2xl leading-none text-[#f2edb4]"
+    >
+      ✕
+    </button>
+  );
+}
+
+/**
  * Экран прохождения урока в стиле Duolingo:
  * реплика питомца -> сборка перевода из чипов -> проверка -> обратная связь -> дальше.
  * Аудио и голосовой ввод пока недоступны (сервисы-заглушки), кнопки с пометкой «скоро».
@@ -350,28 +382,33 @@ function LessonSession({ lesson }: { lesson: Lesson }) {
   // Все уроки пройдены: lessonStore перевёл сессию в статус completed.
   if (status === 'completed') {
     return (
-      <div className="pixel-frame bg-app-card p-5 text-center">
-        <p className="text-5xl leading-none" role="img" aria-label="Радостный питомец">
-          {PET_CONFIG.expressions.happy}
-        </p>
-        <h2 className="mt-3 font-display text-xs leading-relaxed text-app-text">
-          Все уроки пройдены!
-        </h2>
-        <p className="mt-2 font-app text-sm leading-snug text-app-hint">
-          Ты прошёл {lessons.length} из {lessons.length} уроков. Питомец гордится тобой.
-        </p>
-        <p className="pixel-chip mt-3 inline-block bg-app-yellow px-2.5 py-1.5 font-display text-[12px] leading-none text-app-ink">
-          Всего XP: {totalXp}
-        </p>
-        <div className="mt-4 flex flex-col gap-2.5">
-          <PixelButton tone="green" onClick={handleExit} className="w-full">
-            Вернуться к урокам
-          </PixelButton>
-          <PixelButton tone="cream" onClick={handleExitToMenu} className="w-full">
-            В меню
-          </PixelButton>
+      <LessonStage>
+        <LessonExitButton onClick={handleExit} />
+        <div className="my-auto px-4 py-6">
+          <div className="pixel-frame bg-app-card p-5 text-center">
+            <p className="text-5xl leading-none" role="img" aria-label="Радостный питомец">
+              {PET_CONFIG.expressions.happy}
+            </p>
+            <h2 className="mt-3 font-display text-xs leading-relaxed text-app-text">
+              Все уроки пройдены!
+            </h2>
+            <p className="mt-2 font-app text-sm leading-snug text-app-hint">
+              Ты прошёл {lessons.length} из {lessons.length} уроков. Питомец гордится тобой.
+            </p>
+            <p className="pixel-chip mt-3 inline-block bg-app-yellow px-2.5 py-1.5 font-display text-[12px] leading-none text-app-ink">
+              Всего XP: {totalXp}
+            </p>
+            <div className="mt-4 flex flex-col gap-2.5">
+              <PixelButton tone="green" onClick={handleExit} className="w-full">
+                Вернуться к урокам
+              </PixelButton>
+              <PixelButton tone="cream" onClick={handleExitToMenu} className="w-full">
+                В меню
+              </PixelButton>
+            </div>
+          </div>
         </div>
-      </div>
+      </LessonStage>
     );
   }
 
@@ -390,38 +427,55 @@ function LessonSession({ lesson }: { lesson: Lesson }) {
       : PET_CONFIG.expressions[petExpression];
 
   return (
-    <div className="space-y-3">
-      <header className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <h2 className="font-display text-[13px] leading-relaxed text-app-text">
-            Урок {lessonNumber} из {lessons.length}
-          </h2>
-          <p className="mt-1 truncate font-app text-[14px] text-app-hint">{lesson.title}</p>
-        </div>
-        <span className="pixel-chip shrink-0 bg-app-yellow px-2 py-1.5 font-display text-[12px] leading-none text-app-ink">
-          +{lesson.xpReward} XP
-        </span>
-      </header>
+    <LessonStage>
+      <LessonExitButton onClick={handleExit} />
 
-      {/* Карточка питомца с репликой и заданием */}
-      <div className="pixel-frame flex items-start gap-3 bg-app-card p-3">
-        <span
-          className={`text-4xl leading-none ${animationsEnabled ? 'animate-float' : ''}`}
-          role="img"
-          aria-label="Питомец"
-        >
-          {petEmoji}
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="pixel-frame-sm bg-app-screen px-3 py-2 font-app text-sm font-semibold leading-snug text-app-ink">
-            {lesson.petPhrase}
+      {/* Верхняя треть: лягушка на мостике слева и облачко с заданием справа */}
+      <div className="relative z-10 mt-20 flex items-start gap-3 px-3">
+        <div
+          aria-hidden="true"
+          className={`sprite-frame pixelated mt-6 shrink-0 ${
+            animationsEnabled ? 'animate-pixel-bob' : ''
+          }`}
+          style={getFrogFrameStyle('idle', FROG_IDLE_FRAME, 3)}
+        />
+
+        <div className="pixel-frame relative min-w-0 flex-1 bg-app-screen p-3">
+          {/* Хвостик облачка: внешний контур + внутренняя заливка в цвет экрана */}
+          <span
+            aria-hidden="true"
+            className="absolute -left-[13px] top-4 h-0 w-0 border-y-[10px] border-r-[13px] border-y-transparent border-r-app-ink"
+          />
+          <span
+            aria-hidden="true"
+            className="absolute -left-[7px] top-[21px] h-0 w-0 border-y-[7px] border-r-[11px] border-y-transparent border-r-app-screen"
+          />
+
+          <p className="flex items-start gap-2 font-app text-sm font-semibold leading-snug text-app-ink">
+            <span className="shrink-0 text-2xl leading-none" role="img" aria-label="Питомец">
+              {petEmoji}
+            </span>
+            <span className="min-w-0">{lesson.petPhrase}</span>
           </p>
           <p className="mt-1.5 font-app text-[14px] leading-snug text-app-hint">
             {lesson.instruction}
           </p>
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <span className="pixel-chip bg-app-yellow px-2 py-1 font-display text-[11px] leading-none text-app-ink">
+              Урок {lessonNumber} из {lessons.length}
+            </span>
+            <span className="pixel-chip bg-app-card px-2 py-1 font-display text-[11px] leading-none text-app-ink">
+              +{lesson.xpReward} XP
+            </span>
+            <span className="min-w-0 truncate font-app text-[13px] text-app-hint">
+              {lesson.title}
+            </span>
+          </div>
         </div>
       </div>
 
+      {/* Нижняя зона: механика урока, прижата к низу, чтобы не перекрывать лягушку */}
+      <div className="mt-auto space-y-3 border-t-3 border-app-ink bg-app-bg px-4 pb-4 pt-3">
       {/* Аудио и голос пока недоступны: сервисы-заглушки, кнопки выключены. */}
       <div className="grid grid-cols-2 gap-2">
         <button
@@ -577,7 +631,8 @@ function LessonSession({ lesson }: { lesson: Lesson }) {
         />
         Выйти из урока
       </button>
-    </div>
+      </div>
+    </LessonStage>
   );
 }
 
