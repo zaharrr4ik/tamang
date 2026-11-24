@@ -429,39 +429,35 @@ function LessonSession({ lesson }: { lesson: Lesson }) {
     <LessonStage>
       <LessonExitButton onClick={handleExit} />
 
-      {/* Крупная лягушка стоит лапками на деревянном мостике слева */}
+      {/* Крупная лягушка стоит лапками на деревянном мостике слева, лицом к облачку */}
       <div
         aria-hidden="true"
-        className={`sprite-frame pixelated absolute left-[8%] top-[25%] z-20 ${
+        className={`absolute left-[7%] top-[19%] z-20 ${
           animationsEnabled ? 'animate-pixel-bob' : ''
         }`}
-        style={getFrogFrameStyle('idle', FROG_IDLE_FRAME, 5)}
-      />
+      >
+        <div className="-scale-x-100">
+          <div
+            className="sprite-frame pixelated"
+            style={getFrogFrameStyle('idle', FROG_IDLE_FRAME, 6)}
+          />
+        </div>
+      </div>
 
       {/* Облачко с заданием — в верхнем правом углу, чтобы не перекрывать лягушку */}
       <div className="absolute right-3 top-3 z-10 w-[52%]">
-        <div className="pixel-frame relative min-w-0 bg-app-screen p-3">
-          {/* Хвостик облачка: внешний контур + внутренняя заливка в цвет экрана */}
+        <div className="relative rounded-xl border-[3px] border-[#141D1C] bg-[#EFE1C6] p-3.5 text-[#141D1C] shadow-[0_3px_0_#141D1C]">
+          {/* Хвостик облачка в тон фона и рамки */}
           <span
             aria-hidden="true"
-            className="absolute -left-[13px] top-4 h-0 w-0 border-y-[10px] border-r-[13px] border-y-transparent border-r-app-ink"
-          />
-          <span
-            aria-hidden="true"
-            className="absolute -left-[7px] top-[21px] h-0 w-0 border-y-[7px] border-r-[11px] border-y-transparent border-r-app-screen"
+            className="absolute -left-[8px] top-6 h-3 w-3 rotate-45 border-l-[3px] border-b-[3px] border-[#141D1C] bg-[#EFE1C6]"
           />
 
-          <p className="flex items-start gap-2 font-app text-sm font-semibold leading-snug text-app-ink">
+          <p className="flex items-start gap-2 font-app text-sm font-semibold leading-snug">
             <span className="shrink-0 text-2xl leading-none" role="img" aria-label="Питомец">
               {petEmoji}
             </span>
             <span className="min-w-0">{lesson.petPhrase}</span>
-          </p>
-          <p className="mt-1.5 font-app text-[14px] leading-snug text-app-hint">
-            {lesson.instruction}
-          </p>
-          <p className="mt-2 min-w-0 truncate font-app text-[13px] text-app-hint">
-            {lesson.title}
           </p>
         </div>
       </div>
@@ -486,7 +482,7 @@ function LessonSession({ lesson }: { lesson: Lesson }) {
                   disabled={isAnswerLocked}
                   onClick={() => handleRemoveWord(index)}
                   aria-label={`Убрать слово «${word.text}»`}
-                  className="pixel-chip flex min-h-[48px] select-none items-center bg-app-card px-2.5 py-1.5 font-app text-sm text-[#141D1C] disabled:opacity-70"
+                  className="flex min-h-[48px] select-none items-center rounded-md border-2 border-[#141D1C] bg-[#EFE1C6] px-2.5 py-1.5 font-app text-sm text-[#141D1C] shadow-[0_3px_0_#141D1C] active:translate-y-[2px] active:shadow-[0_1px_0_#141D1C] disabled:opacity-70"
                 >
                   {word.text}
                 </button>
@@ -505,7 +501,7 @@ function LessonSession({ lesson }: { lesson: Lesson }) {
               type="button"
               disabled={isAnswerLocked}
               onClick={() => handleSelectWord(word.id)}
-              className="pixel-chip flex min-h-[48px] select-none items-center bg-app-card px-3 py-1.5 font-app text-sm font-semibold text-[#141D1C] disabled:opacity-50"
+              className="flex min-h-[48px] select-none items-center rounded-md border-2 border-[#141D1C] bg-[#EFE1C6] px-3 py-1.5 font-app text-sm font-semibold text-[#141D1C] shadow-[0_3px_0_#141D1C] active:translate-y-[2px] active:shadow-[0_1px_0_#141D1C] disabled:opacity-50"
             >
               {word.text}
             </button>
@@ -567,7 +563,11 @@ function LessonSession({ lesson }: { lesson: Lesson }) {
             type="button"
             onClick={handleClear}
             disabled={selectedWords.length === 0}
-            className="pixel-btn flex min-h-[52px] flex-1 select-none items-center justify-center bg-app-card px-2 font-app text-sm font-bold text-app-text disabled:opacity-50"
+            className={`pixel-btn flex min-h-[52px] flex-1 select-none items-center justify-center rounded-md px-2 font-app text-sm font-bold ${
+              selectedWords.length === 0
+                ? 'border-2 border-[#6E7D78] bg-[#D6D2C4] text-[#57635F] shadow-[0_3px_0_#6E7D78]'
+                : 'bg-app-card text-app-text'
+            }`}
           >
             Очистить
           </button>
@@ -575,7 +575,11 @@ function LessonSession({ lesson }: { lesson: Lesson }) {
             type="button"
             onClick={handleCheck}
             disabled={selectedWords.length === 0}
-            className="pixel-btn flex min-h-[52px] flex-[2] select-none items-center justify-center bg-app-accent px-2 font-app text-base font-bold text-app-accent-contrast disabled:opacity-50"
+            className={`pixel-btn flex min-h-[52px] flex-[2] select-none items-center justify-center rounded-md px-2 font-app text-base font-bold ${
+              selectedWords.length === 0
+                ? 'border-2 border-[#6E7D78] bg-[#D6D2C4] text-[#57635F] shadow-[0_3px_0_#6E7D78]'
+                : 'bg-app-accent text-app-accent-contrast'
+            }`}
           >
             Проверить
           </button>
