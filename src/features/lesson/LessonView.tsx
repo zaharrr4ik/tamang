@@ -312,6 +312,76 @@ function LessonExitButton({ onClick }: { onClick: () => void }) {
   );
 }
 
+/** Выбранное слово вместе с его порядковым номером в полном ответе. */
+interface AnswerLineWord {
+  word: WordToken;
+  index: number;
+}
+
+/**
+ * Сегменты пунктира линии ответа: линия не сплошная, а «потёртая» — разрывы
+ * в разных местах у первой и второй строки, чтобы поверхность выглядела
+ * нарисованной от руки, а не как обычная статичная линия формы.
+ */
+const ANSWER_LINE_SEGMENTS = [
+  ['w-[32%] mr-2', 'w-[17%] mr-5', 'flex-1'],
+  ['w-[13%] mr-4', 'w-[46%] mr-2', 'flex-1'],
+] as const;
+
+/** Пиксельные засечки-«гвоздики» по краям линии ответа. */
+const ANSWER_LINE_EDGE_CLASSES =
+  'before:pointer-events-none before:absolute before:bottom-0 before:left-0 before:h-1 before:w-1 before:bg-[#263533]/35 after:pointer-events-none after:absolute after:bottom-0 after:right-0 after:h-1 after:w-1 after:bg-[#263533]/35';
+
+/**
+ * Одна строка ответа: слова-чипы лежат прямо на линии из пиксельных сегментов.
+ * Рамки у области ответа нет — только две линии с засечками по краям.
+ */
+function AnswerLine({
+  words,
+  segments,
+  locked,
+  onRemove,
+}: {
+  words: AnswerLineWord[];
+  segments: readonly string[];
+  locked: boolean;
+  onRemove: (index: number) => void;
+}) {
+  return (
+    <div
+      className={`relative flex min-h-[46px] flex-wrap items-center gap-2 px-1 pb-2 ${ANSWER_LINE_EDGE_CLASSES}`}
+    >
+      {words.map(({ word, index }) => (
+        <button
+          key={`${word.id}-${index}`}
+          type="button"
+          disabled={locked}
+          onClick={() => onRemove(index)}
+          aria-label={`Убрать слово «${word.text}»`}
+          className="flex min-h-[38px] select-none items-center rounded-md border-2 border-[#141D1C] bg-[#EFE1C6] px-2 py-1 font-app text-sm leading-none text-[#141D1C] shadow-[0_2px_0_#141D1C] active:translate-y-[2px] active:shadow-none disabled:opacity-70"
+        >
+          {word.text}
+        </button>
+      ))}
+
+      {/* Пунктир поверх нижней границы: несколько сегментов с разрывами */}
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-1 bottom-0 flex items-center"
+      >
+        {segments.map((segment, index) => (
+          <span
+            key={index}
+            className={`h-0 border-b-2 ${segment} ${
+              index % 2 === 1 ? 'border-[#263533]/22' : 'border-[#263533]/30'
+            }`}
+          />
+        ))}
+      </span>
+    </div>
+  );
+}
+
 /**
  * Экран прохождения урока в стиле Duolingo:
  * реплика питомца -> сборка перевода из чипов -> проверка -> обратная связь -> дальше.
@@ -330,7 +400,6 @@ function LessonSession({ lesson }: { lesson: Lesson }) {
   const exitLesson = useLessonStore((state) => state.exitLesson);
 
   const totalXp = usePetStore((state) => state.totalXp);
-  const petExpression = usePetStore((state) => state.expression);
   const animationsEnabled = useSettingsStore((state) => state.animationsEnabled);
   const backToMenu = useUiStore((state) => state.backToMenu);
 
@@ -419,172 +488,167 @@ function LessonSession({ lesson }: { lesson: Lesson }) {
   const isAnswerLocked = status === 'correct' || status === 'wrong';
   const isCorrect = status === 'correct';
   const isWrong = status === 'wrong';
-  const petEmoji = isCorrect
-    ? PET_CONFIG.expressions.happy
-    : isWrong
-      ? PET_CONFIG.expressions.sad
-      : PET_CONFIG.expressions[petExpression];
+
+  // Раскладываем выбранные слова по двум линиям примерно поровну по длине:
+  // так строки не пустуют, и ответ не сбивается в комок на одной из них.
+  const answerLines: AnswerLineWord[][] = [[], []];
+  const halfLength =
+    selectedWords.reduce((total, word) => total + word.text.length + 1, 0) / 2;
+  let lineLength = 0;
+  selectedWords.forEach((word, index) => {
+    const lineIndex = lineLength >= halfLength && answerLines[0].length > 0 ? 1 : 0;
+    answerLines[lineIndex].push({ word, index });
+    lineLength += word.text.length + 1;
+  });
 
   return (
     <LessonStage>
       <LessonExitButton onClick={handleExit} />
 
-      {/* Крупная лягушка стоит лапками на деревянном мостике слева, лицом к облачку */}
-      <div
-        aria-hidden="true"
-        className={`absolute left-[7%] top-[19%] z-20 ${
-          animationsEnabled ? 'animate-pixel-bob' : ''
-        }`}
-      >
-        <div className="-scale-x-100">
-          <div
-            className="sprite-frame pixelated"
-            style={getFrogFrameStyle('idle', FROG_IDLE_FRAME, 6)}
-          />
+      {/* Верхняя сцена: лягушка и облачко в одном flex-ряду, поэтому облачко
+          всегда стоит справа от лягушки строго на уровне её рта.
+          pt-… прижимает лапки лягушки к настилу мостика (мосток в фоне занимает
+          ~27–32% высоты экрана), pb-… опускает рабочую зону под иллюстрацию. */}
+      <div className="relative z-20 flex items-center gap-3 px-4 pb-[9vh] pt-[calc(31vh_-_6rem)]">
+        {/* Лягушка масштаба 6 (168×96): развёрнута вправо к облачку */}
+        <div
+          aria-hidden="true"
+          className={`shrink-0 ${animationsEnabled ? 'animate-pixel-bob' : ''}`}
+        >
+          <div className="-scale-x-100">
+            <div
+              className="sprite-frame pixelated"
+              style={getFrogFrameStyle('idle', FROG_IDLE_FRAME, 6)}
+            />
+          </div>
         </div>
-      </div>
 
-      {/* Облачко с заданием — в верхнем правом углу, чтобы не перекрывать лягушку */}
-      <div className="absolute right-3 top-3 z-10 w-[52%]">
-        <div className="relative rounded-xl border-[3px] border-[#141D1C] bg-[#EFE1C6] p-3.5 text-[#141D1C] shadow-[0_3px_0_#141D1C]">
-          {/* Хвостик облачка в тон фона и рамки */}
-          <span
-            aria-hidden="true"
-            className="absolute -left-[8px] top-6 h-3 w-3 rotate-45 border-l-[3px] border-b-[3px] border-[#141D1C] bg-[#EFE1C6]"
-          />
-
-          <p className="flex items-start gap-2 font-app text-sm font-semibold leading-snug">
-            <span className="shrink-0 text-2xl leading-none" role="img" aria-label="Питомец">
-              {petEmoji}
-            </span>
-            <span className="min-w-0">{lesson.petPhrase}</span>
-          </p>
-        </div>
-      </div>
-
-      {/* Нижняя зона: механика урока в нижних 60% экрана, фон прозрачный,
-          чтобы были видны светлая часть фона и камыши */}
-      <div className="mt-[42vh] space-y-3 bg-transparent px-4 pb-4 pt-3">
-
-      {/* Трей ответа: тап по слову убирает его из ответа */}
-      <div>
-        <div className="pixel-frame-sm min-h-[68px] bg-transparent p-2">
-          {selectedWords.length === 0 ? (
-            <p className="px-1 py-2 font-app text-[14px] text-[#141D1C]">
-              Нажми на слова ниже, чтобы собрать перевод
+        {/* Облачко с заданием: только текст фразы, без эмодзи */}
+        <div className="relative min-w-0 flex-1">
+          <div className="relative rounded-xl border-[3px] border-[#141D1C] bg-[#EFE1C6] p-3.5 text-[#141D1C] shadow-[0_3px_0_#141D1C]">
+            {/* Хвостик облачка в тон фона и рамки — указывает на рот лягушки */}
+            <span
+              aria-hidden="true"
+              className="absolute -left-[8px] top-1/2 h-3 w-3 -translate-y-1/2 rotate-45 border-b-[3px] border-l-[3px] border-[#141D1C] bg-[#EFE1C6]"
+            />
+            <p className="min-w-0 font-app text-sm font-semibold leading-snug">
+              {lesson.petPhrase}
             </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Нижняя рабочая зона: сверху две линии ответа, снизу блок банка слов
+          и кнопок прижат к самому низу экрана (mt-auto) */}
+      <div className="relative z-10 flex flex-1 flex-col justify-between px-4 pb-5 pt-4">
+        {/* Две статичные линии ответа: выбранные слова лежат прямо на них */}
+        <div className="space-y-1">
+          {answerLines.map((lineWords, lineIndex) => (
+            <AnswerLine
+              key={lineIndex}
+              words={lineWords}
+              segments={ANSWER_LINE_SEGMENTS[lineIndex]}
+              locked={isAnswerLocked}
+              onRemove={handleRemoveWord}
+            />
+          ))}
+        </div>
+
+        <div className="mt-auto flex flex-col gap-4">
+          {/* Обратная связь после проверки */}
+          {isCorrect && (
+            <div role="status" className="pixel-frame bg-app-accent-soft px-3 py-2.5">
+              <p className="inline-block bg-app-accent px-2 py-1 font-display text-[12px] leading-none text-app-accent-contrast">
+                Верно! 🎉
+              </p>
+              <p className="mt-1.5 font-app text-xs text-app-hint">
+                +{lesson.xpReward} XP питомцу
+              </p>
+              <p className="mt-1 font-app text-xs text-app-text">
+                Правильный перевод: {lesson.translation}
+              </p>
+            </div>
+          )}
+          {isWrong && (
+            <div role="status" className="pixel-frame bg-app-card px-3 py-2.5">
+              <p className="inline-block bg-app-danger px-2 py-1 font-display text-[12px] leading-none text-app-ink">
+                Пока неверно
+              </p>
+              <p className="mt-1.5 font-app text-xs text-app-hint">
+                Попытка {attempts}. Попробуй ещё раз или посмотри правильный перевод.
+              </p>
+              <p className="mt-1 font-app text-xs text-app-text">
+                Правильный перевод: {lesson.translation}
+              </p>
+            </div>
+          )}
+
+          {/* Банк слов: тап добавляет слово в ответ */}
+          <div className="flex flex-wrap gap-1.5">
+            {availableWords.map((word) => (
+              <button
+                key={word.id}
+                type="button"
+                disabled={isAnswerLocked}
+                onClick={() => handleSelectWord(word.id)}
+                className="flex min-h-[48px] select-none items-center rounded-md border-2 border-[#141D1C] bg-[#EFE1C6] px-3 py-1.5 font-app text-sm font-semibold text-[#141D1C] shadow-[0_3px_0_#141D1C] active:translate-y-[2px] active:shadow-[0_1px_0_#141D1C] disabled:opacity-50"
+              >
+                {word.text}
+              </button>
+            ))}
+          </div>
+
+          {/* Управление: проверить / очистить либо дальше / повторить */}
+          {isAnswerLocked ? (
+            <div className="space-y-2">
+              {/* При неверном ответе «Дальше» не показываем: урок нельзя пропустить,
+                  нужно собрать ответ заново. */}
+              {isCorrect && (
+                <PixelButton tone="green" onClick={handleNext} className="w-full">
+                  <span className="flex items-center justify-center gap-1.5">
+                    Дальше
+                    <span
+                      aria-hidden="true"
+                      className="h-0 w-0 shrink-0 border-y-[5px] border-l-[7px] border-y-transparent border-l-current"
+                    />
+                  </span>
+                </PixelButton>
+              )}
+              {isWrong && (
+                <PixelButton tone="yellow" onClick={handleRetry} className="w-full">
+                  Попробовать снова
+                </PixelButton>
+              )}
+            </div>
           ) : (
-            <div className="flex flex-wrap gap-1.5">
-              {selectedWords.map((word, index) => (
-                <button
-                  key={`${word.id}-${index}`}
-                  type="button"
-                  disabled={isAnswerLocked}
-                  onClick={() => handleRemoveWord(index)}
-                  aria-label={`Убрать слово «${word.text}»`}
-                  className="flex min-h-[48px] select-none items-center rounded-md border-2 border-[#141D1C] bg-[#EFE1C6] px-2.5 py-1.5 font-app text-sm text-[#141D1C] shadow-[0_3px_0_#141D1C] active:translate-y-[2px] active:shadow-[0_1px_0_#141D1C] disabled:opacity-70"
-                >
-                  {word.text}
-                </button>
-              ))}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handleClear}
+                disabled={selectedWords.length === 0}
+                className={`pixel-btn flex min-h-[52px] flex-1 select-none items-center justify-center rounded-md px-2 font-app text-sm font-bold ${
+                  selectedWords.length === 0
+                    ? 'border-2 border-[#6E7D78] bg-[#D6D2C4] text-[#57635F] shadow-[0_3px_0_#6E7D78]'
+                    : 'bg-app-card text-app-text'
+                }`}
+              >
+                Очистить
+              </button>
+              <button
+                type="button"
+                onClick={handleCheck}
+                disabled={selectedWords.length === 0}
+                className={`pixel-btn flex min-h-[52px] flex-[2] select-none items-center justify-center rounded-md px-2 font-app text-base font-bold ${
+                  selectedWords.length === 0
+                    ? 'border-2 border-[#6E7D78] bg-[#D6D2C4] text-[#57635F] shadow-[0_3px_0_#6E7D78]'
+                    : 'bg-app-accent text-app-accent-contrast'
+                }`}
+              >
+                Проверить
+              </button>
             </div>
           )}
         </div>
-      </div>
-
-      {/* Банк слов: тап добавляет слово в ответ */}
-      <div>
-        <div className="flex flex-wrap gap-1.5">
-          {availableWords.map((word) => (
-            <button
-              key={word.id}
-              type="button"
-              disabled={isAnswerLocked}
-              onClick={() => handleSelectWord(word.id)}
-              className="flex min-h-[48px] select-none items-center rounded-md border-2 border-[#141D1C] bg-[#EFE1C6] px-3 py-1.5 font-app text-sm font-semibold text-[#141D1C] shadow-[0_3px_0_#141D1C] active:translate-y-[2px] active:shadow-[0_1px_0_#141D1C] disabled:opacity-50"
-            >
-              {word.text}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Обратная связь после проверки */}
-      {isCorrect && (
-        <div role="status" className="pixel-frame bg-app-accent-soft px-3 py-2.5">
-          <p className="inline-block bg-app-accent px-2 py-1 font-display text-[12px] leading-none text-app-accent-contrast">
-            Верно! 🎉
-          </p>
-          <p className="mt-1.5 font-app text-xs text-app-hint">+{lesson.xpReward} XP питомцу</p>
-          <p className="mt-1 font-app text-xs text-app-text">
-            Правильный перевод: {lesson.translation}
-          </p>
-        </div>
-      )}
-      {isWrong && (
-        <div role="status" className="pixel-frame bg-app-card px-3 py-2.5">
-          <p className="inline-block bg-app-danger px-2 py-1 font-display text-[12px] leading-none text-app-ink">
-            Пока неверно
-          </p>
-          <p className="mt-1.5 font-app text-xs text-app-hint">
-            Попытка {attempts}. Попробуй ещё раз или посмотри правильный перевод.
-          </p>
-          <p className="mt-1 font-app text-xs text-app-text">
-            Правильный перевод: {lesson.translation}
-          </p>
-        </div>
-      )}
-
-      {/* Управление: проверить / очистить либо дальше / повторить */}
-      {isAnswerLocked ? (
-        <div className="space-y-2">
-          {/* При неверном ответе «Дальше» не показываем: урок нельзя пропустить,
-              нужно собрать ответ заново. */}
-          {isCorrect && (
-            <PixelButton tone="green" onClick={handleNext} className="w-full">
-              <span className="flex items-center justify-center gap-1.5">
-                Дальше
-                <span
-                  aria-hidden="true"
-                  className="h-0 w-0 shrink-0 border-y-[5px] border-l-[7px] border-y-transparent border-l-current"
-                />
-              </span>
-            </PixelButton>
-          )}
-          {isWrong && (
-            <PixelButton tone="yellow" onClick={handleRetry} className="w-full">
-              Попробовать снова
-            </PixelButton>
-          )}
-        </div>
-      ) : (
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={handleClear}
-            disabled={selectedWords.length === 0}
-            className={`pixel-btn flex min-h-[52px] flex-1 select-none items-center justify-center rounded-md px-2 font-app text-sm font-bold ${
-              selectedWords.length === 0
-                ? 'border-2 border-[#6E7D78] bg-[#D6D2C4] text-[#57635F] shadow-[0_3px_0_#6E7D78]'
-                : 'bg-app-card text-app-text'
-            }`}
-          >
-            Очистить
-          </button>
-          <button
-            type="button"
-            onClick={handleCheck}
-            disabled={selectedWords.length === 0}
-            className={`pixel-btn flex min-h-[52px] flex-[2] select-none items-center justify-center rounded-md px-2 font-app text-base font-bold ${
-              selectedWords.length === 0
-                ? 'border-2 border-[#6E7D78] bg-[#D6D2C4] text-[#57635F] shadow-[0_3px_0_#6E7D78]'
-                : 'bg-app-accent text-app-accent-contrast'
-            }`}
-          >
-            Проверить
-          </button>
-        </div>
-      )}
       </div>
     </LessonStage>
   );
