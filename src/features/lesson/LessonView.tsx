@@ -423,7 +423,6 @@ function LessonSession({ lesson }: { lesson: Lesson }) {
   const selectedWords = selectedWordIds
     .map((wordId) => lesson.words.find((word) => word.id === wordId))
     .filter((word): word is WordToken => word !== undefined);
-  const availableWords = lesson.words.filter((word) => !selectedWordIds.includes(word.id));
   const isAnswerLocked = status === 'correct' || status === 'wrong';
   const isCorrect = status === 'correct';
   const isWrong = status === 'wrong';
@@ -436,7 +435,7 @@ function LessonSession({ lesson }: { lesson: Lesson }) {
           всегда стоит справа от лягушки строго на уровне её рта.
           pt-… прижимает лапки лягушки к настилу мостика (мосток в фоне занимает
           ~27–32% высоты экрана), pb-… опускает рабочую зону под иллюстрацию. */}
-      <div className="relative z-20 flex items-center gap-3 px-4 pb-[9vh] pt-[calc(31vh_-_6rem)]">
+      <div className="relative z-20 flex items-center gap-3 pl-9 pr-4 pb-[7vh] pt-[calc(28vh_-_6rem)]">
         {/* Лягушка масштаба 6 (168×96): развёрнута вправо к облачку */}
         <div
           aria-hidden="true"
@@ -452,11 +451,11 @@ function LessonSession({ lesson }: { lesson: Lesson }) {
 
         {/* Облачко с заданием: только текст фразы, без эмодзи */}
         <div className="relative min-w-0 flex-1">
-          <div className="relative rounded-xl border-[3px] border-[#141D1C] bg-[#EFE1C6] p-3.5 text-[#141D1C] shadow-[0_3px_0_#141D1C]">
+          <div className="relative rounded-2xl border-4 border-[#141D1C] bg-[#EFE1C6] p-3.5 text-[#141D1C]">
             {/* Хвостик облачка в тон фона и рамки — указывает на рот лягушки */}
             <span
               aria-hidden="true"
-              className="absolute -left-[8px] top-1/2 h-3 w-3 -translate-y-1/2 rotate-45 border-b-[3px] border-l-[3px] border-[#141D1C] bg-[#EFE1C6]"
+              className="absolute -left-[9px] top-1/2 h-3 w-3 -translate-y-1/2 rotate-45 border-b-4 border-l-4 border-[#141D1C] bg-[#EFE1C6]"
             />
             <p className="min-w-0 font-app text-sm font-semibold leading-snug">
               {lesson.petPhrase}
@@ -465,13 +464,12 @@ function LessonSession({ lesson }: { lesson: Lesson }) {
         </div>
       </div>
 
-      {/* Нижняя рабочая зона: сверху две линии ответа, снизу блок банка слов
-          и кнопок прижат к самому низу экрана (mt-auto) */}
-      <div className="relative z-10 flex flex-1 flex-col justify-between px-4 pb-5 pt-4">
-        {/* Область ответа: слова идут строго по очереди слева направо и сами
-            переносятся на вторую строку, когда первая заполнится. Позади —
-            две ровные статичные линии из чёрточек и точек. */}
-        <div className="relative flex min-h-[104px] flex-wrap content-start items-start gap-x-2 gap-y-2.5 px-1">
+      {/* Нижняя рабочая зона: три отдельных слоя — поле с линиями ответа,
+          банк слов по центру и кнопки/фидбэк у нижнего края. Верхние два слоя
+          имеют увеличенные боковые отступы mx-4, нижний шире (px-4). */}
+      <div className="relative z-10 flex flex-1 flex-col pb-8 pt-4">
+        {/* Слой 1: поле ответа — линии и вписанные слова дальше от краёв (mx-4) */}
+        <div className="relative mx-4 flex min-h-[104px] flex-wrap content-start items-start gap-x-2 gap-y-2.5 px-1">
           <div
             aria-hidden="true"
             className="pointer-events-none absolute inset-x-1 z-0"
@@ -501,14 +499,45 @@ function LessonSession({ lesson }: { lesson: Lesson }) {
               disabled={isAnswerLocked}
               onClick={() => handleRemoveWord(index)}
               aria-label={`Убрать слово «${word.text}»`}
-              className="relative z-10 flex min-h-[38px] select-none items-center rounded-md border-2 border-[#141D1C] bg-[#EFE1C6] px-2 py-1 font-app text-sm leading-none text-[#141D1C] shadow-[0_2px_0_#141D1C] active:translate-y-[2px] active:shadow-none disabled:opacity-70"
+              className="relative z-10 flex min-h-[38px] select-none items-center rounded-full border-2 border-[#141D1C] bg-[#EFE1C6] px-4 py-1 font-app text-sm leading-none text-[#141D1C] disabled:opacity-70"
             >
               {word.text}
             </button>
           ))}
         </div>
 
-        <div className="mt-auto flex flex-col gap-4">
+        {/* Слой 2: банк слов — по центру между полем ответа и нижней панелью.
+            Рендерим все слова в исходном порядке, а выбранные заменяем невидимой
+            «тенью» того же размера, чтобы остальные слова не сдвигались. */}
+        <div className="my-auto mx-4 flex flex-wrap justify-center gap-2">
+          {lesson.words.map((word) => {
+            if (selectedWordIds.includes(word.id)) {
+              return (
+                <span
+                  key={word.id}
+                  aria-hidden="true"
+                  className="pointer-events-none flex min-h-[44px] select-none items-center rounded-full border-2 border-transparent bg-[#263533]/15 px-4 py-1.5 font-app text-sm font-semibold"
+                >
+                  <span className="invisible">{word.text}</span>
+                </span>
+              );
+            }
+            return (
+              <button
+                key={word.id}
+                type="button"
+                disabled={isAnswerLocked}
+                onClick={() => handleSelectWord(word.id)}
+                className="flex min-h-[44px] select-none items-center rounded-full border-2 border-[#141D1C] bg-[#EFE1C6] px-4 py-1.5 font-app text-sm font-semibold text-[#141D1C] disabled:opacity-50"
+              >
+                {word.text}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Слой 3: обратная связь и кнопки — в нижней части, шире верхних слоёв */}
+        <div className="flex flex-col gap-4 px-4">
           {/* Обратная связь после проверки */}
           {isCorrect && (
             <div role="status" className="pixel-frame bg-app-accent-soft px-3 py-2.5">
@@ -536,21 +565,6 @@ function LessonSession({ lesson }: { lesson: Lesson }) {
               </p>
             </div>
           )}
-
-          {/* Банк слов: тап добавляет слово в ответ */}
-          <div className="flex flex-wrap gap-1.5">
-            {availableWords.map((word) => (
-              <button
-                key={word.id}
-                type="button"
-                disabled={isAnswerLocked}
-                onClick={() => handleSelectWord(word.id)}
-                className="flex min-h-[48px] select-none items-center rounded-md border-2 border-[#141D1C] bg-[#EFE1C6] px-3 py-1.5 font-app text-sm font-semibold text-[#141D1C] shadow-[0_3px_0_#141D1C] active:translate-y-[2px] active:shadow-[0_1px_0_#141D1C] disabled:opacity-50"
-              >
-                {word.text}
-              </button>
-            ))}
-          </div>
 
           {/* Управление: проверить / очистить либо дальше / повторить */}
           {isAnswerLocked ? (
