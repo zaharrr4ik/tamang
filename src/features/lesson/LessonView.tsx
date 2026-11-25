@@ -1,4 +1,11 @@
-import { Fragment, useEffect, useMemo, useRef, type ReactNode } from 'react';
+import {
+  Fragment,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  type ReactNode,
+} from 'react';
 import { useUiFeedback } from '@/components/hooks/useUiFeedback';
 import { FROG_IDLE_FRAME, getFrogFrameStyle } from '@/components/pet/petSprites';
 import { PixelButton } from '@/components/ui/PixelButton';
@@ -298,16 +305,21 @@ function LessonStage({ children }: { children: ReactNode }) {
   );
 }
 
-/** Кнопка выхода из урока: стиль кнопки «Назад» с карты, крестик в левом верхнем углу. */
+/**
+ * Кнопка выхода из урока: скруглённая кнопка «Назад» в цвете крем-брюле —
+ * та же стрелка возврата, что у кнопки на карте болота.
+ */
 function LessonExitButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       type="button"
       aria-label="Выйти из урока"
       onClick={onClick}
-      className="pixel-frame-sm absolute left-4 top-4 z-50 flex h-11 w-11 shrink-0 select-none items-center justify-center bg-[#3f6b38] pb-1 font-display text-2xl leading-none text-[#f2edb4]"
+      className="absolute left-4 top-4 z-50 flex h-11 w-11 shrink-0 select-none items-center justify-center rounded-xl border-[3px] border-[#141D1C] bg-[#EFE1C6] text-[#141D1C] active:translate-y-[1px]"
     >
-      ✕
+      <span aria-hidden="true" className="pb-1 font-display text-2xl leading-none">
+        ‹
+      </span>
     </button>
   );
 }
@@ -344,15 +356,96 @@ function LessonSession({ lesson }: { lesson: Lesson }) {
 
   const { playSound, vibrate } = useUiFeedback();
 
+  /**
+   * FLIP-анимация плашек слов. После выбора/удаления слова плашка переезжает
+   * из банка в строку ответа (или обратно), и мы проигрываем этот перелёт плавно:
+   *  - chipElementsRef хранит активную кнопку слова (в банке или в ответе) по word.id;
+   *  - pendingFlipRef — сохранённый до обновления состояния прямоугольник плашки,
+   *    из которого она «вылетает» после рендера.
+   */
+  const chipElementsRef = useRef<Map<string, HTMLButtonElement>>(new Map());
+  const pendingFlipRef = useRef<{ wordId: string; rect: DOMRect } | null>(null);
+
+  // Привязываем ref к активной кнопке слова — в банке или в поле ответа.
+  const registerChip = (wordId: string) => (element: HTMLButtonElement | null) => {
+    if (element === null) {
+      chipElementsRef.current.delete(wordId);
+    } else {
+      chipElementsRef.current.set(wordId, element);
+    }
+  };
+
+  const rememberChipRect = (wordId: string): void => {
+    const element = chipElementsRef.current.get(wordId);
+    if (element !== undefined) {
+      pendingFlipRef.current = { wordId, rect: element.getBoundingClientRect() };
+    }
+  };
+
   const handleSelectWord = (wordId: string): void => {
+    rememberChipRect(wordId);
     playSound('tap');
     selectWord(wordId);
   };
 
   const handleRemoveWord = (index: number): void => {
+    const wordId = selectedWordIds[index];
+    if (wordId !== undefined) {
+      rememberChipRect(wordId);
+    }
     vibrate('light');
     removeWordAt(index);
   };
+
+  // После обновления selectedWordIds новая кнопка слова уже смонтирована:
+  // мгновенно ставим её в старую позицию и плавно возвращаем на место.
+  useLayoutEffect(() => {
+    const pendingFlip = pendingFlipRef.current;
+    pendingFlipRef.current = null;
+
+    if (!animationsEnabled || pendingFlip === null) {
+      return;
+    }
+
+    const element = chipElementsRef.current.get(pendingFlip.wordId);
+    if (element === undefined) {
+      return;
+    }
+
+    const newRect = element.getBoundingClientRect();
+    const dx = pendingFlip.rect.left - newRect.left;
+    const dy = pendingFlip.rect.top - newRect.top;
+    if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) {
+      return;
+    }
+
+    element.style.transition = 'none';
+    element.style.transform = `translate(${dx}px, ${dy}px)`;
+    // Форсируем reflow, чтобы браузер запомнил стартовую позицию до анимации.
+    void element.offsetWidth;
+
+    const frame = requestAnimationFrame(() => {
+      element.style.transition = 'transform 220ms cubic-bezier(0.22, 1, 0.36, 1)';
+      element.style.transform = 'translate(0px, 0px)';
+    });
+
+    const handleTransitionEnd = (event: TransitionEvent): void => {
+      if (event.target !== element || event.propertyName !== 'transform') {
+        return;
+      }
+      element.style.transition = '';
+      element.style.transform = '';
+      element.removeEventListener('transitionend', handleTransitionEnd);
+    };
+    element.addEventListener('transitionend', handleTransitionEnd);
+
+    return () => {
+      cancelAnimationFrame(frame);
+      element.removeEventListener('transitionend', handleTransitionEnd);
+      element.style.transition = '';
+      element.style.transform = '';
+    };
+  }, [selectedWordIds, animationsEnabled]);
 
   const handleClear = (): void => {
     playSound('tap');
@@ -449,9 +542,12 @@ function LessonSession({ lesson }: { lesson: Lesson }) {
           </div>
         </div>
 
-        {/* Облачко с заданием: только текст фразы, без эмодзи */}
+        {/* Облачко с заданием: только текст фразы, без эмодзи.
+            Внешняя обёртка задаёт максимальную ширину (до правого края экрана),
+            внутренний блок сам подстраивается под текст (w-fit) и переносит
+            длинные фразы на несколько строк (max-w-full). */}
         <div className="relative -ml-3 min-w-0 flex-1">
-          <div className="relative rounded-2xl border-4 border-[#141D1C] bg-[#EFE1C6] p-3.5 text-[#141D1C]">
+          <div className="relative w-fit max-w-full rounded-2xl border-4 border-[#141D1C] bg-[#EFE1C6] px-4 py-3 text-[#141D1C]">
             {/* Хвостик облачка в тон фона и рамки — указывает на рот лягушки */}
             <span
               aria-hidden="true"
@@ -492,14 +588,18 @@ function LessonSession({ lesson }: { lesson: Lesson }) {
             />
           </div>
 
+          {/* Вписанные слова чуть опущены (top-[3px]), чтобы нижний край плашки
+              ложился ровно на пунктирную линию ответа. Смещение через top,
+              а не transform, чтобы не конфликтовать с FLIP-анимацией перелёта. */}
           {selectedWords.map((word, index) => (
             <button
               key={`${word.id}-${index}`}
+              ref={registerChip(word.id)}
               type="button"
               disabled={isAnswerLocked}
               onClick={() => handleRemoveWord(index)}
               aria-label={`Убрать слово «${word.text}»`}
-              className="relative z-10 flex min-h-[38px] select-none items-center rounded-xl border-2 border-[#141D1C] bg-[#EFE1C6] px-4 py-1 font-app text-sm leading-none text-[#141D1C] disabled:opacity-70"
+              className="relative top-[3px] z-10 flex min-h-[38px] select-none items-center rounded-xl border-2 border-[#141D1C] bg-[#EFE1C6] px-4 py-1 font-app text-sm leading-none text-[#141D1C] disabled:opacity-70"
             >
               {word.text}
             </button>
@@ -525,6 +625,7 @@ function LessonSession({ lesson }: { lesson: Lesson }) {
             return (
               <button
                 key={word.id}
+                ref={registerChip(word.id)}
                 type="button"
                 disabled={isAnswerLocked}
                 onClick={() => handleSelectWord(word.id)}
