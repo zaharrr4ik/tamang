@@ -358,13 +358,15 @@ function LessonSession({ lesson }: { lesson: Lesson }) {
 
   /**
    * FLIP-анимация плашек слов. После выбора/удаления слова плашка переезжает
-   * из банка в строку ответа (или обратно), и мы проигрываем этот перелёт плавно:
+   * из банка в строку ответа (или обратно), и мы проигрываем этот перелёт плавно.
+   * Анимируем сразу все плашки: та, что переехала, летит на новое место,
+   * а соседние в строке ответа плавно сдвигаются в освободившийся слот.
    *  - chipElementsRef хранит активную кнопку слова (в банке или в ответе) по word.id;
-   *  - pendingFlipRef — сохранённый до обновления состояния прямоугольник плашки,
-   *    из которого она «вылетает» после рендера.
+   *  - pendingRectsRef — экранные rect'ы всех плашек до обновления состояния,
+   *    из которых они «вылетают» после рендера.
    */
   const chipElementsRef = useRef<Map<string, HTMLButtonElement>>(new Map());
-  const pendingFlipRef = useRef<{ wordId: string; rect: DOMRect } | null>(null);
+  const pendingRectsRef = useRef<Map<string, DOMRect>>(new Map());
 
   // Привязываем ref к активной кнопке слова — в банке или в поле ответа.
   const registerChip = (wordId: string) => (element: HTMLButtonElement | null) => {
@@ -375,75 +377,98 @@ function LessonSession({ lesson }: { lesson: Lesson }) {
     }
   };
 
-  const rememberChipRect = (wordId: string): void => {
-    const element = chipElementsRef.current.get(wordId);
-    if (element !== undefined) {
-      pendingFlipRef.current = { wordId, rect: element.getBoundingClientRect() };
-    }
+  // Перед любым изменением ответа запоминаем положение всех видимых плашек.
+  const captureChipRects = (): void => {
+    chipElementsRef.current.forEach((element, wordId) => {
+      pendingRectsRef.current.set(wordId, element.getBoundingClientRect());
+    });
   };
 
   const handleSelectWord = (wordId: string): void => {
-    rememberChipRect(wordId);
+    captureChipRects();
     playSound('tap');
     selectWord(wordId);
   };
 
   const handleRemoveWord = (index: number): void => {
-    const wordId = selectedWordIds[index];
-    if (wordId !== undefined) {
-      rememberChipRect(wordId);
-    }
+    captureChipRects();
     vibrate('light');
     removeWordAt(index);
   };
 
-  // После обновления selectedWordIds новая кнопка слова уже смонтирована:
-  // мгновенно ставим её в старую позицию и плавно возвращаем на место.
+  // После обновления selectedWordIds новые кнопки уже смонтированы: каждой плашке,
+  // у которой сохранился старый rect, мгновенно даём старую позицию и плавно
+  // возвращаем на место — так переезжает нажатое слово и подтягиваются соседи.
   useLayoutEffect(() => {
-    const pendingFlip = pendingFlipRef.current;
-    pendingFlipRef.current = null;
-
-    if (!animationsEnabled || pendingFlip === null) {
+    if (!animationsEnabled || pendingRectsRef.current.size === 0) {
+      pendingRectsRef.current.clear();
       return;
     }
 
-    const element = chipElementsRef.current.get(pendingFlip.wordId);
-    if (element === undefined) {
-      return;
-    }
+    const cleanups: Array<() => void> = [];
 
-    const newRect = element.getBoundingClientRect();
-    const dx = pendingFlip.rect.left - newRect.left;
-    const dy = pendingFlip.rect.top - newRect.top;
-    if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) {
-      return;
-    }
-
-    element.style.transition = 'none';
-    element.style.transform = `translate(${dx}px, ${dy}px)`;
-    // Форсируем reflow, чтобы браузер запомнил стартовую позицию до анимации.
-    void element.offsetWidth;
-
-    const frame = requestAnimationFrame(() => {
-      element.style.transition = 'transform 220ms cubic-bezier(0.22, 1, 0.36, 1)';
-      element.style.transform = 'translate(0px, 0px)';
-    });
-
-    const handleTransitionEnd = (event: TransitionEvent): void => {
-      if (event.target !== element || event.propertyName !== 'transform') {
+    chipElementsRef.current.forEach((element, wordId) => {
+      const oldRect = pendingRectsRef.current.get(wordId);
+      if (oldRect === undefined) {
         return;
       }
-      element.style.transition = '';
-      element.style.transform = '';
-      element.removeEventListener('transitionend', handleTransitionEnd);
-    };
-    element.addEventListener('transitionend', handleTransitionEnd);
+
+      const newRect = element.getBoundingClientRect();
+      const dx = oldRect.left - newRect.left;
+      const dy = oldRect.top - newRect.top;
+      if (Math.abs(dx) <= 0.5 && Math.abs(dy) <= 0.5) {
+        return;
+      }
+
+      element.style.transition = 'none';
+      element.style.transform = `translate(${dx}px, ${dy}px)`;
+      // Форсируем reflow, чтобы браузер запомнил стартовую позицию до анимации.
+      void element.offsetWidth;
+
+      let frame = 0;
+      let timeout = 0;
+      let isFinished = false;
+
+      function finishAnimation(): void {
+        if (isFinished) {
+          return;
+        }
+        isFinished = true;
+        element.style.transition = '';
+        element.style.transform = '';
+        element.removeEventListener('transitionend', handleTransitionEnd);
+        window.clearTimeout(timeout);
+      }
+
+      function handleTransitionEnd(event: TransitionEvent): void {
+        if (event.target !== element || event.propertyName !== 'transform') {
+          return;
+        }
+        finishAnimation();
+      }
+
+      element.addEventListener('transitionend', handleTransitionEnd);
+
+      frame = requestAnimationFrame(() => {
+        element.style.transition = 'transform 290ms cubic-bezier(0.22, 1, 0.36, 1)';
+        element.style.transform = 'translate(0px, 0px)';
+        // Страховка на случай, если transitionend не придёт.
+        timeout = window.setTimeout(finishAnimation, 320);
+      });
+
+      cleanups.push(() => {
+        window.cancelAnimationFrame(frame);
+        window.clearTimeout(timeout);
+        element.removeEventListener('transitionend', handleTransitionEnd);
+        element.style.transition = '';
+        element.style.transform = '';
+      });
+    });
+
+    pendingRectsRef.current.clear();
 
     return () => {
-      cancelAnimationFrame(frame);
-      element.removeEventListener('transitionend', handleTransitionEnd);
-      element.style.transition = '';
-      element.style.transform = '';
+      cleanups.forEach((cleanup) => cleanup());
     };
   }, [selectedWordIds, animationsEnabled]);
 
