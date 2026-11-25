@@ -450,14 +450,14 @@ function LessonSession({ lesson }: { lesson: Lesson }) {
         </div>
 
         {/* Облачко с заданием: только текст фразы, без эмодзи */}
-        <div className="relative -translate-y-3 min-w-0 flex-1">
+        <div className="relative min-w-0 flex-1">
           <div className="relative rounded-2xl border-4 border-[#141D1C] bg-[#EFE1C6] p-3.5 text-[#141D1C]">
             {/* Хвостик облачка в тон фона и рамки — указывает на рот лягушки */}
             <span
               aria-hidden="true"
-              className="absolute -left-[9px] top-[62%] h-3 w-3 -translate-y-1/2 rotate-45 border-b-4 border-l-4 border-[#141D1C] bg-[#EFE1C6]"
+              className="absolute -left-[9px] top-1/2 h-3 w-3 -translate-y-1/2 rotate-45 border-b-4 border-l-4 border-[#141D1C] bg-[#EFE1C6]"
             />
-            <p className="min-w-0 font-app text-[15px] font-semibold leading-snug">
+            <p className="min-w-0 font-app text-[17px] font-semibold leading-snug">
               {lesson.petPhrase}
             </p>
           </div>
