@@ -435,7 +435,7 @@ function LessonSession({ lesson }: { lesson: Lesson }) {
           всегда стоит справа от лягушки строго на уровне её рта.
           pt-… прижимает лапки лягушки к настилу мостика (мосток в фоне занимает
           ~27–32% высоты экрана), pb-… опускает рабочую зону под иллюстрацию. */}
-      <div className="relative z-20 flex items-center gap-3 pl-9 pr-4 pb-[7vh] pt-[calc(28vh_-_6rem)]">
+      <div className="relative z-20 flex items-center gap-2.5 pl-3 pr-4 pb-[9vh] pt-[calc(30.5vh_-_6rem)]">
         {/* Лягушка масштаба 6 (168×96): развёрнута вправо к облачку */}
         <div
           aria-hidden="true"
@@ -465,11 +465,11 @@ function LessonSession({ lesson }: { lesson: Lesson }) {
       </div>
 
       {/* Нижняя рабочая зона: три отдельных слоя — поле с линиями ответа,
-          банк слов по центру и кнопки/фидбэк у нижнего края. Верхние два слоя
-          имеют увеличенные боковые отступы mx-4, нижний шире (px-4). */}
+          банк слов по центру и кнопки/фидбэк у нижнего края. Поле ответа сужено
+          по бокам (mx-5), банк слов почти вплотную к краям (mx-2), нижний слой шире (px-4). */}
       <div className="relative z-10 flex flex-1 flex-col pb-8 pt-4">
-        {/* Слой 1: поле ответа — линии и вписанные слова дальше от краёв (mx-4) */}
-        <div className="relative mx-4 flex min-h-[104px] flex-wrap content-start items-start gap-x-2 gap-y-2.5 px-1">
+        {/* Слой 1: поле ответа — линии и вписанные слова дальше от краёв (mx-5) */}
+        <div className="relative mx-5 flex min-h-[104px] flex-wrap content-start items-start gap-x-2 gap-y-2.5 px-1">
           <div
             aria-hidden="true"
             className="pointer-events-none absolute inset-x-1 z-0"
@@ -499,7 +499,7 @@ function LessonSession({ lesson }: { lesson: Lesson }) {
               disabled={isAnswerLocked}
               onClick={() => handleRemoveWord(index)}
               aria-label={`Убрать слово «${word.text}»`}
-              className="relative z-10 flex min-h-[38px] select-none items-center rounded-full border-2 border-[#141D1C] bg-[#EFE1C6] px-4 py-1 font-app text-sm leading-none text-[#141D1C] disabled:opacity-70"
+              className="relative z-10 flex min-h-[38px] select-none items-center rounded-xl border-2 border-[#141D1C] bg-[#EFE1C6] px-4 py-1 font-app text-sm leading-none text-[#141D1C] disabled:opacity-70"
             >
               {word.text}
             </button>
@@ -509,14 +509,14 @@ function LessonSession({ lesson }: { lesson: Lesson }) {
         {/* Слой 2: банк слов — по центру между полем ответа и нижней панелью.
             Рендерим все слова в исходном порядке, а выбранные заменяем невидимой
             «тенью» того же размера, чтобы остальные слова не сдвигались. */}
-        <div className="my-auto mx-4 flex flex-wrap justify-center gap-2">
+        <div className="my-auto mx-2 flex flex-wrap justify-center gap-x-3 gap-y-3">
           {lesson.words.map((word) => {
             if (selectedWordIds.includes(word.id)) {
               return (
                 <span
                   key={word.id}
                   aria-hidden="true"
-                  className="pointer-events-none flex min-h-[44px] select-none items-center rounded-full border-2 border-transparent bg-[#263533]/15 px-4 py-1.5 font-app text-sm font-semibold"
+                  className="pointer-events-none flex min-h-[44px] select-none items-center rounded-xl border-2 border-transparent bg-[#263533]/15 px-4 py-1.5 font-app text-sm font-semibold"
                 >
                   <span className="invisible">{word.text}</span>
                 </span>
@@ -528,7 +528,7 @@ function LessonSession({ lesson }: { lesson: Lesson }) {
                 type="button"
                 disabled={isAnswerLocked}
                 onClick={() => handleSelectWord(word.id)}
-                className="flex min-h-[44px] select-none items-center rounded-full border-2 border-[#141D1C] bg-[#EFE1C6] px-4 py-1.5 font-app text-sm font-semibold text-[#141D1C] disabled:opacity-50"
+                className="flex min-h-[44px] select-none items-center rounded-xl border-2 border-[#141D1C] bg-[#EFE1C6] px-4 py-1.5 font-app text-sm font-semibold text-[#141D1C] disabled:opacity-50"
               >
                 {word.text}
               </button>
