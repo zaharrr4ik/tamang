@@ -312,75 +312,14 @@ function LessonExitButton({ onClick }: { onClick: () => void }) {
   );
 }
 
-/** Выбранное слово вместе с его порядковым номером в полном ответе. */
-interface AnswerLineWord {
-  word: WordToken;
-  index: number;
-}
-
 /**
- * Сегменты пунктира линии ответа: линия не сплошная, а «потёртая» — разрывы
- * в разных местах у первой и второй строки, чтобы поверхность выглядела
- * нарисованной от руки, а не как обычная статичная линия формы.
+ * Две ровные линии ответа из чередующихся чёрточек и точек (· — · —).
+ * Паттерн — SVG data-URI: чёрточка 8×2, пробел 4px, точка 2×2, пробел 4px;
+ * повторяется по горизонтали, поэтому линия остаётся пиксельной и не дёргается
+ * при добавлении слов.
  */
-const ANSWER_LINE_SEGMENTS = [
-  ['w-[32%] mr-2', 'w-[17%] mr-5', 'flex-1'],
-  ['w-[13%] mr-4', 'w-[46%] mr-2', 'flex-1'],
-] as const;
-
-/** Пиксельные засечки-«гвоздики» по краям линии ответа. */
-const ANSWER_LINE_EDGE_CLASSES =
-  'before:pointer-events-none before:absolute before:bottom-0 before:left-0 before:h-1 before:w-1 before:bg-[#263533]/35 after:pointer-events-none after:absolute after:bottom-0 after:right-0 after:h-1 after:w-1 after:bg-[#263533]/35';
-
-/**
- * Одна строка ответа: слова-чипы лежат прямо на линии из пиксельных сегментов.
- * Рамки у области ответа нет — только две линии с засечками по краям.
- */
-function AnswerLine({
-  words,
-  segments,
-  locked,
-  onRemove,
-}: {
-  words: AnswerLineWord[];
-  segments: readonly string[];
-  locked: boolean;
-  onRemove: (index: number) => void;
-}) {
-  return (
-    <div
-      className={`relative flex min-h-[46px] flex-wrap items-center gap-2 px-1 pb-2 ${ANSWER_LINE_EDGE_CLASSES}`}
-    >
-      {words.map(({ word, index }) => (
-        <button
-          key={`${word.id}-${index}`}
-          type="button"
-          disabled={locked}
-          onClick={() => onRemove(index)}
-          aria-label={`Убрать слово «${word.text}»`}
-          className="flex min-h-[38px] select-none items-center rounded-md border-2 border-[#141D1C] bg-[#EFE1C6] px-2 py-1 font-app text-sm leading-none text-[#141D1C] shadow-[0_2px_0_#141D1C] active:translate-y-[2px] active:shadow-none disabled:opacity-70"
-        >
-          {word.text}
-        </button>
-      ))}
-
-      {/* Пунктир поверх нижней границы: несколько сегментов с разрывами */}
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-1 bottom-0 flex items-center"
-      >
-        {segments.map((segment, index) => (
-          <span
-            key={index}
-            className={`h-0 border-b-2 ${segment} ${
-              index % 2 === 1 ? 'border-[#263533]/22' : 'border-[#263533]/30'
-            }`}
-          />
-        ))}
-      </span>
-    </div>
-  );
-}
+const ANSWER_LINE_PATTERN =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='2' viewBox='0 0 18 2'%3E%3Crect width='8' height='2' fill='%23263533' fill-opacity='0.35'/%3E%3Crect x='12' width='2' height='2' fill='%23263533' fill-opacity='0.35'/%3E%3C/svg%3E\")";
 
 /**
  * Экран прохождения урока в стиле Duolingo:
@@ -489,18 +428,6 @@ function LessonSession({ lesson }: { lesson: Lesson }) {
   const isCorrect = status === 'correct';
   const isWrong = status === 'wrong';
 
-  // Раскладываем выбранные слова по двум линиям примерно поровну по длине:
-  // так строки не пустуют, и ответ не сбивается в комок на одной из них.
-  const answerLines: AnswerLineWord[][] = [[], []];
-  const halfLength =
-    selectedWords.reduce((total, word) => total + word.text.length + 1, 0) / 2;
-  let lineLength = 0;
-  selectedWords.forEach((word, index) => {
-    const lineIndex = lineLength >= halfLength && answerLines[0].length > 0 ? 1 : 0;
-    answerLines[lineIndex].push({ word, index });
-    lineLength += word.text.length + 1;
-  });
-
   return (
     <LessonStage>
       <LessonExitButton onClick={handleExit} />
@@ -541,16 +468,43 @@ function LessonSession({ lesson }: { lesson: Lesson }) {
       {/* Нижняя рабочая зона: сверху две линии ответа, снизу блок банка слов
           и кнопок прижат к самому низу экрана (mt-auto) */}
       <div className="relative z-10 flex flex-1 flex-col justify-between px-4 pb-5 pt-4">
-        {/* Две статичные линии ответа: выбранные слова лежат прямо на них */}
-        <div className="space-y-1">
-          {answerLines.map((lineWords, lineIndex) => (
-            <AnswerLine
-              key={lineIndex}
-              words={lineWords}
-              segments={ANSWER_LINE_SEGMENTS[lineIndex]}
-              locked={isAnswerLocked}
-              onRemove={handleRemoveWord}
+        {/* Область ответа: слова идут строго по очереди слева направо и сами
+            переносятся на вторую строку, когда первая заполнится. Позади —
+            две ровные статичные линии из чёрточек и точек. */}
+        <div className="relative flex min-h-[104px] flex-wrap content-start items-start gap-x-2 gap-y-2.5 px-1">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-1 z-0"
+          >
+            <span
+              className="absolute inset-x-0 top-[44px] h-[2px]"
+              style={{
+                backgroundImage: ANSWER_LINE_PATTERN,
+                backgroundRepeat: 'repeat-x',
+                backgroundSize: '18px 2px',
+              }}
             />
+            <span
+              className="absolute inset-x-0 top-[96px] h-[2px]"
+              style={{
+                backgroundImage: ANSWER_LINE_PATTERN,
+                backgroundRepeat: 'repeat-x',
+                backgroundSize: '18px 2px',
+              }}
+            />
+          </div>
+
+          {selectedWords.map((word, index) => (
+            <button
+              key={`${word.id}-${index}`}
+              type="button"
+              disabled={isAnswerLocked}
+              onClick={() => handleRemoveWord(index)}
+              aria-label={`Убрать слово «${word.text}»`}
+              className="relative z-10 flex min-h-[38px] select-none items-center rounded-md border-2 border-[#141D1C] bg-[#EFE1C6] px-2 py-1 font-app text-sm leading-none text-[#141D1C] shadow-[0_2px_0_#141D1C] active:translate-y-[2px] active:shadow-none disabled:opacity-70"
+            >
+              {word.text}
+            </button>
           ))}
         </div>
 
