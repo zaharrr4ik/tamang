@@ -435,7 +435,7 @@ function LessonSession({ lesson }: { lesson: Lesson }) {
           всегда стоит справа от лягушки строго на уровне её рта.
           pt-… прижимает лапки лягушки к настилу мостика (мосток в фоне занимает
           ~27–32% высоты экрана), pb-… опускает рабочую зону под иллюстрацию. */}
-      <div className="relative z-20 -ml-2 flex items-center gap-2 pl-0 pr-4 pb-[9vh] pt-[calc(30.5vh_-_6rem)]">
+      <div className="relative z-20 -ml-2 flex items-center gap-0 pl-0 pr-4 pb-[9vh] pt-[calc(30.5vh_-_6rem)]">
         {/* Лягушка масштаба 6 (168×96): развёрнута вправо к облачку */}
         <div
           aria-hidden="true"
@@ -450,7 +450,7 @@ function LessonSession({ lesson }: { lesson: Lesson }) {
         </div>
 
         {/* Облачко с заданием: только текст фразы, без эмодзи */}
-        <div className="relative min-w-0 flex-1">
+        <div className="relative -ml-3 min-w-0 flex-1">
           <div className="relative rounded-2xl border-4 border-[#141D1C] bg-[#EFE1C6] p-3.5 text-[#141D1C]">
             {/* Хвостик облачка в тон фона и рамки — указывает на рот лягушки */}
             <span
