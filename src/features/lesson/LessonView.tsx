@@ -306,8 +306,8 @@ function LessonStage({ children }: { children: ReactNode }) {
 }
 
 /**
- * Кнопка выхода из урока: скруглённая кнопка «Назад» в цвете крем-брюле —
- * та же стрелка возврата, что у кнопки на карте болота.
+ * Кнопка выхода из урока: скруглённая «Назад» с болотно-зелёным фоном
+ * (как у кнопки на карте болота) и крем-брюле-стрелкой возврата.
  */
 function LessonExitButton({ onClick }: { onClick: () => void }) {
   return (
@@ -315,7 +315,7 @@ function LessonExitButton({ onClick }: { onClick: () => void }) {
       type="button"
       aria-label="Выйти из урока"
       onClick={onClick}
-      className="absolute left-4 top-4 z-50 flex h-11 w-11 shrink-0 select-none items-center justify-center rounded-xl border-[3px] border-[#141D1C] bg-[#EFE1C6] text-[#141D1C] active:translate-y-[1px]"
+      className="absolute left-4 top-4 z-50 flex h-11 w-11 shrink-0 select-none items-center justify-center rounded-xl border-[3px] border-[#141D1C] bg-[#3f6b38] text-[#EFE1C6] active:translate-y-[1px]"
     >
       <span aria-hidden="true" className="pb-1 font-display text-2xl leading-none">
         ‹
