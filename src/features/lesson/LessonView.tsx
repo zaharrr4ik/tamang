@@ -664,20 +664,8 @@ function LessonSession({ lesson }: { lesson: Lesson }) {
 
         {/* Слой 3: обратная связь и кнопки — в нижней части, шире верхних слоёв */}
         <div className="flex flex-col gap-4 px-4">
-          {/* Обратная связь после проверки */}
-          {isCorrect && (
-            <div role="status" className="pixel-frame bg-app-accent-soft px-3 py-2.5">
-              <p className="inline-block bg-app-accent px-2 py-1 font-display text-[12px] leading-none text-app-accent-contrast">
-                Верно! 🎉
-              </p>
-              <p className="mt-1.5 font-app text-xs text-app-hint">
-                +{lesson.xpReward} XP питомцу
-              </p>
-              <p className="mt-1 font-app text-xs text-app-text">
-                Правильный перевод: {lesson.translation}
-              </p>
-            </div>
-          )}
+          {/* Обратная связь после проверки: плашки при верном ответе нет,
+              чтобы кнопка «Дальше» появлялась сразу и интерфейс не сдвигался. */}
           {isWrong && (
             <div role="status" className="pixel-frame bg-app-card px-3 py-2.5">
               <p className="inline-block bg-app-danger px-2 py-1 font-display text-[12px] leading-none text-app-ink">
