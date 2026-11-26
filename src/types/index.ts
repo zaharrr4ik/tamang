@@ -64,20 +64,33 @@ export interface WordToken {
   text: string;
 }
 
-/** Мок-урок: реплика питомца и задание собрать ответ из слов. */
-export interface Lesson {
+/** Статус отдельного задания внутри урока (для шкалы прогресса и круга исправления). */
+export type LessonTaskStatus = 'pending' | 'correct' | 'wrong';
+
+/**
+ * Одно задание внутри урока: реплика питомца и банк слов для сборки перевода.
+ * Отдельный интерфейс — чтобы уроки можно было импортировать из JSON/админки.
+ */
+export interface LessonTask {
   id: string;
-  title: string;
   /** Фраза, которую «говорит» питомец. */
   petPhrase: string;
-  /** Инструкция к заданию. */
-  instruction: string;
   /** Правильный перевод (показывается после верной/неверной сборки). */
   translation: string;
-  /** Перемешанный банк слов. */
+  /** Перемешанный банк слов (включая дистракторы). */
   words: WordToken[];
   /** Правильный порядок id слов. */
   correctWordIds: string[];
+}
+
+/** Мок-урок: тема и последовательность заданий. */
+export interface Lesson {
+  id: string;
+  title: string;
+  /** Общая инструкция к заданиям урока. */
+  instruction: string;
+  /** Последовательность заданий (4–5 штук). */
+  tasks: LessonTask[];
   xpReward: number;
   mode?: LessonMode;
 }

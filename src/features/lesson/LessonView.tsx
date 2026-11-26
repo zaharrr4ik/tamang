@@ -22,7 +22,7 @@ import starGrayUrl from '@/assets/icons/star-gray.png';
 import starYellowUrl from '@/assets/icons/star-yellow.png';
 import swampBgUrl from '@/assets/icons/swamp-bg.jpg';
 import { useLessonStore, usePetStore, useSettingsStore, useUiStore } from '@/store';
-import type { Lesson, WordToken } from '@/types';
+import type { Lesson, LessonTaskStatus, WordToken } from '@/types';
 
 /**
  * Модуль уроков:
@@ -324,6 +324,66 @@ function LessonExitButton({ onClick }: { onClick: () => void }) {
   );
 }
 
+/** Цвета сегментов шкалы прогресса по статусу задания. */
+const TASK_SEGMENT_TONE: Record<LessonTaskStatus, string> = {
+  pending: 'bg-[#263533]/60',
+  correct: 'bg-[#7ED957]',
+  wrong: 'bg-[#E05A47]',
+};
+
+/**
+ * Тонкая сегментированная шкала прогресса урока в верхней панели.
+ * Поверх сетки сегментов едет белый светящийся ползунок шириной 1/N трека:
+ * он плавно смещается на текущее задание и возвращается на красные слоты
+ * во время круга исправления ошибок.
+ */
+function LessonProgressBar({
+  taskStatuses,
+  currentTaskIndex,
+  animationsEnabled,
+}: {
+  taskStatuses: LessonTaskStatus[];
+  currentTaskIndex: number;
+  animationsEnabled: boolean;
+}) {
+  const total = taskStatuses.length;
+  if (total === 0) {
+    return null;
+  }
+
+  return (
+    <div className="absolute left-[72px] right-4 top-4 z-40 flex h-11 items-center">
+      <div className="relative h-3 w-full rounded-full border-2 border-[#141D1C] bg-[#141D1C]/70 p-[2px]">
+        <div
+          className="relative grid h-full gap-1"
+          style={{
+            gridTemplateColumns: `repeat(${total}, minmax(0, 1fr))`,
+          }}
+        >
+          {taskStatuses.map((taskStatus, index) => (
+            <span
+              key={index}
+              aria-hidden="true"
+              className={`rounded-full ${TASK_SEGMENT_TONE[taskStatus]}`}
+            />
+          ))}
+
+          {/* Белый ползунок: ширина ровно 1/N трека, сдвиг — на ширину собственного шага. */}
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-y-0 left-0 rounded-full bg-[#FFFDF7] shadow-[0_0_8px_rgba(255,253,247,0.85)] ring-1 ring-white transition-transform duration-300 ease-out"
+            style={{
+              width: `${100 / total}%`,
+              transform: `translateX(${currentTaskIndex * 100}%)`,
+              transition: animationsEnabled ? undefined : 'none',
+            }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /**
  * Две ровные линии ответа из чередующихся чёрточек и точек (· — · —).
  * Паттерн — SVG data-URI: чёрточка 8×2, пробел 4px, точка 2×2, пробел 4px;
@@ -340,13 +400,17 @@ const ANSWER_LINE_PATTERN =
  */
 function LessonSession({ lesson }: { lesson: Lesson }) {
   const lessons = useLessonStore((state) => state.lessons);
+  const completedLessonIds = useLessonStore((state) => state.completedLessonIds);
   const selectedWordIds = useLessonStore((state) => state.selectedWordIds);
   const status = useLessonStore((state) => state.status);
   const attempts = useLessonStore((state) => state.attempts);
+  const currentTaskIndex = useLessonStore((state) => state.currentTaskIndex);
+  const taskStatuses = useLessonStore((state) => state.taskStatuses);
   const selectWord = useLessonStore((state) => state.selectWord);
   const removeWordAt = useLessonStore((state) => state.removeWordAt);
   const clearAnswer = useLessonStore((state) => state.clearAnswer);
   const checkAnswer = useLessonStore((state) => state.checkAnswer);
+  const nextTask = useLessonStore((state) => state.nextTask);
   const nextLesson = useLessonStore((state) => state.nextLesson);
   const exitLesson = useLessonStore((state) => state.exitLesson);
 
@@ -485,6 +549,11 @@ function LessonSession({ lesson }: { lesson: Lesson }) {
 
   const handleNext = (): void => {
     playSound('tap');
+    nextTask();
+  };
+
+  const handleNextLesson = (): void => {
+    playSound('tap');
     nextLesson();
   };
 
@@ -505,29 +574,45 @@ function LessonSession({ lesson }: { lesson: Lesson }) {
     backToMenu();
   };
 
-  // Все уроки пройдены: lessonStore перевёл сессию в статус completed.
+  // Сессия урока завершена: все задания решены. Отличаем «урок пройден»
+  // от «пройдены все уроки» по списку завершённых уроков.
   if (status === 'completed') {
+    const allLessonsCompleted = lessons.every((item) => completedLessonIds.includes(item.id));
+
     return (
       <LessonStage>
         <LessonExitButton onClick={handleExit} />
+        <LessonProgressBar
+          taskStatuses={taskStatuses}
+          currentTaskIndex={currentTaskIndex}
+          animationsEnabled={animationsEnabled}
+        />
         <div className="my-auto px-4 py-6">
           <div className="pixel-frame bg-app-card p-5 text-center">
             <p className="text-5xl leading-none" role="img" aria-label="Радостный питомец">
               {PET_CONFIG.expressions.happy}
             </p>
             <h2 className="mt-3 font-display text-xs leading-relaxed text-app-text">
-              Все уроки пройдены!
+              {allLessonsCompleted ? 'Все уроки пройдены!' : 'Урок пройден!'}
             </h2>
             <p className="mt-2 font-app text-sm leading-snug text-app-hint">
-              Ты прошёл {lessons.length} из {lessons.length} уроков. Питомец гордится тобой.
+              {allLessonsCompleted
+                ? `Ты прошёл ${lessons.length} из ${lessons.length} уроков. Питомец гордится тобой.`
+                : `Тема «${lesson.title}» закрыта. Ошибки исправлены, питомец доволен.`}
             </p>
             <p className="pixel-chip mt-3 inline-block bg-app-yellow px-2.5 py-1.5 font-display text-[12px] leading-none text-app-ink">
               Всего XP: {totalXp}
             </p>
             <div className="mt-4 flex flex-col gap-2.5">
-              <PixelButton tone="green" onClick={handleExit} className="w-full">
-                Вернуться к урокам
-              </PixelButton>
+              {allLessonsCompleted ? (
+                <PixelButton tone="green" onClick={handleExit} className="w-full">
+                  Вернуться к урокам
+                </PixelButton>
+              ) : (
+                <PixelButton tone="green" onClick={handleNextLesson} className="w-full">
+                  Следующий урок
+                </PixelButton>
+              )}
               <PixelButton tone="cream" onClick={handleExitToMenu} className="w-full">
                 В меню
               </PixelButton>
@@ -538,16 +623,23 @@ function LessonSession({ lesson }: { lesson: Lesson }) {
     );
   }
 
+  // Текущее задание урока: его реплика, перевод и банк слов.
+  const task = lesson.tasks[currentTaskIndex] ?? lesson.tasks[0];
+  const taskWords = task.words;
   const selectedWords = selectedWordIds
-    .map((wordId) => lesson.words.find((word) => word.id === wordId))
+    .map((wordId) => taskWords.find((word) => word.id === wordId))
     .filter((word): word is WordToken => word !== undefined);
   const isAnswerLocked = status === 'correct' || status === 'wrong';
-  const isCorrect = status === 'correct';
   const isWrong = status === 'wrong';
 
   return (
     <LessonStage>
       <LessonExitButton onClick={handleExit} />
+      <LessonProgressBar
+        taskStatuses={taskStatuses}
+        currentTaskIndex={currentTaskIndex}
+        animationsEnabled={animationsEnabled}
+      />
 
       {/* Верхняя сцена: лягушка и облачко в одном flex-ряду, поэтому облачко
           всегда стоит справа от лягушки строго на уровне её рта.
@@ -579,7 +671,7 @@ function LessonSession({ lesson }: { lesson: Lesson }) {
               className="absolute -left-[9px] top-1/2 h-3 w-3 -translate-y-1/2 rotate-45 border-b-4 border-l-4 border-[#141D1C] bg-[#EFE1C6]"
             />
             <p className="min-w-0 font-app text-[17px] font-semibold leading-snug">
-              {lesson.petPhrase}
+              {task.petPhrase}
             </p>
           </div>
         </div>
@@ -635,7 +727,7 @@ function LessonSession({ lesson }: { lesson: Lesson }) {
             Рендерим все слова в исходном порядке, а выбранные заменяем невидимой
             «тенью» того же размера, чтобы остальные слова не сдвигались. */}
         <div className="my-auto mx-1.5 flex flex-wrap justify-center gap-x-3.5 gap-y-3.5">
-          {lesson.words.map((word) => {
+          {taskWords.map((word) => {
             if (selectedWordIds.includes(word.id)) {
               return (
                 <span
@@ -675,27 +767,25 @@ function LessonSession({ lesson }: { lesson: Lesson }) {
                 Попытка {attempts}. Попробуй ещё раз или посмотри правильный перевод.
               </p>
               <p className="mt-1 font-app text-xs text-app-text">
-                Правильный перевод: {lesson.translation}
+                Правильный перевод: {task.translation}
               </p>
             </div>
           )}
 
-          {/* Управление: проверить / очистить либо дальше / повторить */}
+          {/* Управление: после проверки всегда можно идти дальше. При неверном
+              ответе слот остаётся красным, а «Попробовать снова» даёт исправить
+              его сразу (или в конце — в круге исправления ошибок). */}
           {isAnswerLocked ? (
             <div className="space-y-2">
-              {/* При неверном ответе «Дальше» не показываем: урок нельзя пропустить,
-                  нужно собрать ответ заново. */}
-              {isCorrect && (
-                <PixelButton tone="green" onClick={handleNext} className="w-full">
-                  <span className="flex items-center justify-center gap-1.5">
-                    Дальше
-                    <span
-                      aria-hidden="true"
-                      className="h-0 w-0 shrink-0 border-y-[5px] border-l-[7px] border-y-transparent border-l-current"
-                    />
-                  </span>
-                </PixelButton>
-              )}
+              <PixelButton tone="green" onClick={handleNext} className="w-full">
+                <span className="flex items-center justify-center gap-1.5">
+                  Дальше
+                  <span
+                    aria-hidden="true"
+                    className="h-0 w-0 shrink-0 border-y-[5px] border-l-[7px] border-y-transparent border-l-current"
+                  />
+                </span>
+              </PixelButton>
               {isWrong && (
                 <PixelButton tone="yellow" onClick={handleRetry} className="w-full">
                   Попробовать снова
