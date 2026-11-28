@@ -123,7 +123,6 @@ export function LessonSession({ lesson }: { lesson: Lesson }) {
   const completedLessonIds = useLessonStore((state) => state.completedLessonIds);
   const selectedWordIds = useLessonStore((state) => state.selectedWordIds);
   const status = useLessonStore((state) => state.status);
-  const attempts = useLessonStore((state) => state.attempts);
   const currentTaskIndex = useLessonStore((state) => state.currentTaskIndex);
   const taskStatuses = useLessonStore((state) => state.taskStatuses);
   const selectWord = useLessonStore((state) => state.selectWord);
@@ -174,12 +173,6 @@ export function LessonSession({ lesson }: { lesson: Lesson }) {
   const handleNextLesson = (): void => {
     playSound('tap');
     nextLesson();
-  };
-
-  const handleRetry = (): void => {
-    playSound('tap');
-    vibrate('light');
-    clearAnswer();
   };
 
   const handleExit = (): void => {
@@ -250,6 +243,12 @@ export function LessonSession({ lesson }: { lesson: Lesson }) {
     .filter((word): word is WordToken => word !== undefined);
   const isAnswerLocked = status === 'correct' || status === 'wrong';
   const isWrong = status === 'wrong';
+  // Эталонный перевод по словам: без регистра и конечных знаков препинания,
+  // чтобы сравнивать его с выбранными словами по позициям.
+  const expectedWords = task.translation
+    .trim()
+    .split(/\s+/)
+    .map((w) => w.toLowerCase().replace(/[.,!?;:]+$/g, ''));
 
   return (
     <LessonStage>
@@ -292,6 +291,16 @@ export function LessonSession({ lesson }: { lesson: Lesson }) {
             <p className="min-w-0 font-app text-[17px] font-semibold leading-snug">
               {task.petPhrase}
             </p>
+            {isWrong && (
+              <div className="mt-2 border-t-2 border-[#141D1C]/15 pt-2">
+                <p className="font-app text-xs font-medium text-[#141D1C]/70">
+                  Правильный перевод:
+                </p>
+                <p className="mt-0.5 font-app text-[15px] font-bold leading-snug text-[#141D1C]">
+                  {task.translation}
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -327,19 +336,29 @@ export function LessonSession({ lesson }: { lesson: Lesson }) {
           {/* Вписанные слова чуть опущены (top-[3px]), чтобы нижний край плашки
               ложился ровно на пунктирную линию ответа. Смещение через top,
               а не transform, чтобы не конфликтовать с FLIP-анимацией перелёта. */}
-          {selectedWords.map((word, index) => (
-            <button
-              key={`${word.id}-${index}`}
-              ref={registerChip(word.id)}
-              type="button"
-              disabled={isAnswerLocked}
-              onClick={() => handleRemoveWord(index)}
-              aria-label={`Убрать слово «${word.text}»`}
-              className="relative top-[3px] z-10 flex min-h-[38px] select-none items-center rounded-xl border-2 border-[#141D1C] bg-[#EFE1C6] px-4 py-1 font-app text-sm leading-none text-[#141D1C] disabled:opacity-70"
-            >
-              {word.text}
-            </button>
-          ))}
+          {selectedWords.map((word, index) => {
+            const isWordWrong =
+              isWrong &&
+              word.text.trim().toLowerCase().replace(/[.,!?;:]+$/g, '') !== expectedWords[index];
+
+            return (
+              <button
+                key={`${word.id}-${index}`}
+                ref={registerChip(word.id)}
+                type="button"
+                disabled={isAnswerLocked}
+                onClick={() => handleRemoveWord(index)}
+                aria-label={`Убрать слово «${word.text}»`}
+                className={`relative top-[3px] z-10 flex min-h-[38px] select-none items-center rounded-xl border-2 px-4 py-1 font-app text-sm leading-none ${
+                  isWordWrong
+                    ? 'border-[#5C1916] bg-[#E05A47] text-[#FFFDF7]'
+                    : 'border-[#141D1C] bg-[#EFE1C6] text-[#141D1C]'
+                }`}
+              >
+                {word.text}
+              </button>
+            );
+          })}
         </div>
 
         {/* Слой 2: банк слов — по центру между полем ответа и нижней панелью.
@@ -373,44 +392,18 @@ export function LessonSession({ lesson }: { lesson: Lesson }) {
           })}
         </div>
 
-        {/* Слой 3: обратная связь и кнопки — в нижней части, шире верхних слоёв */}
+        {/* Слой 3: кнопки — в нижней части, шире верхних слоёв */}
         <div className="flex flex-col gap-4 px-4">
-          {/* Обратная связь после проверки: плашки при верном ответе нет,
-              чтобы кнопка «Дальше» появлялась сразу и интерфейс не сдвигался. */}
-          {isWrong && (
-            <div role="status" className="pixel-frame bg-app-card px-3 py-2.5">
-              <p className="inline-block bg-app-danger px-2 py-1 font-display text-[12px] leading-none text-app-ink">
-                Пока неверно
-              </p>
-              <p className="mt-1.5 font-app text-xs text-app-hint">
-                Попытка {attempts}. Попробуй ещё раз или посмотри правильный перевод.
-              </p>
-              <p className="mt-1 font-app text-xs text-app-text">
-                Правильный перевод: {task.translation}
-              </p>
-            </div>
-          )}
-
-          {/* Управление: после проверки всегда можно идти дальше. При неверном
-              ответе слот остаётся красным, а «Попробовать снова» даёт исправить
-              его сразу (или в конце — в круге исправления ошибок). */}
           {isAnswerLocked ? (
-            <div className="space-y-2">
-              <PixelButton tone="green" onClick={handleNext} className="w-full">
-                <span className="flex items-center justify-center gap-1.5">
-                  Дальше
-                  <span
-                    aria-hidden="true"
-                    className="h-0 w-0 shrink-0 border-y-[5px] border-l-[7px] border-y-transparent border-l-current"
-                  />
-                </span>
-              </PixelButton>
-              {isWrong && (
-                <PixelButton tone="yellow" onClick={handleRetry} className="w-full">
-                  Попробовать снова
-                </PixelButton>
-              )}
-            </div>
+            <PixelButton tone="green" onClick={handleNext} className="w-full">
+              <span className="flex items-center justify-center gap-1.5">
+                Дальше
+                <span
+                  aria-hidden="true"
+                  className="h-0 w-0 shrink-0 border-y-[5px] border-l-[7px] border-y-transparent border-l-current"
+                />
+              </span>
+            </PixelButton>
           ) : (
             <div className="flex gap-2">
               <button
